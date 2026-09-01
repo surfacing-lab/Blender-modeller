@@ -64,18 +64,27 @@ def render(
     samples=32,
     clay=True,
     wireframe=False,
+    frame=None,
+    ambient=0.14,
 ):
     """Render every mesh in the scene, auto-framed. Returns filepath.
 
     angle:     three_quarter | front | side | top, or an (azimuth, elevation)
-               pair in degrees.
+               pair in degrees. Azimuth/elevation describe where the *camera*
+               sits, not which face of the subject you see.
+    frame:     names of the objects to frame on. Defaults to every mesh.
+    ambient:   world brightness. Needs to stay above zero or open cavities
+               (wheel arches, cabins) render as unreadable black voids.
     clay:      override all materials with neutral grey, so form is judged by
                silhouette and shading rather than by texture.
     wireframe: overlay edges, for checking topology and edge flow.
     """
     scene = bpy.context.scene
     meshes = [o for o in scene.objects if o.type == 'MESH']
-    centre, radius = _bounds(meshes)
+    # Framing can be driven by a subset, so a ground plane or backdrop doesn't
+    # push the real subject into the distance.
+    subject = [o for o in meshes if o.name in frame] if frame else meshes
+    centre, radius = _bounds(subject)
 
     named = {
         "three_quarter": (45, 25),
@@ -135,7 +144,8 @@ def render(
     world = scene.world or bpy.data.worlds.new("World")
     scene.world = world
     world.use_nodes = True
-    world.node_tree.nodes["Background"].inputs[0].default_value = (0.05, 0.05, 0.06, 1)
+    world.node_tree.nodes["Background"].inputs[0].default_value = (
+        ambient, ambient, ambient * 1.08, 1)
 
     scene.render.engine = 'CYCLES'
     scene.cycles.device = 'CPU'

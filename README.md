@@ -52,3 +52,18 @@ preview.contact_sheet("model")                          # front + side + 3/4
 
 `angle` accepts `front`, `side`, `top`, `three_quarter`, or an
 `(azimuth, elevation)` pair in degrees.
+
+## models/car_blockout.py
+
+Stage 1-2 of the build order: body side profile, then wheels as plain cylinders
+for proportion. Front and rear are deliberately not modelled yet — they get
+built to meet this side.
+
+All dimensions live in `PROPORTIONS` (metres, real-world scale) so the form can
+be pushed between iterations without editing construction code. The car faces
++X, up is +Z, and the side panel is mirrored across Y=0.
+
+```python
+from models import car_blockout
+car_blockout.build()
+```
