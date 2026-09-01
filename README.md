@@ -53,6 +53,22 @@ preview.contact_sheet("model")                          # front + side + 3/4
 `angle` accepts `front`, `side`, `top`, `three_quarter`, or an
 `(azimuth, elevation)` pair in degrees.
 
+## tools/inspect_blend.py
+
+Reads a .blend and reports what its meshes are actually made of — face counts
+and whether they are all quads, the modifier stack with its settings in order,
+every crease value present and how many edges carry it, vertex valence, and
+overall dimensions.
+
+```bash
+python3 tools/inspect_blend.py path/to/file.blend --poles
+```
+
+Use it to learn from someone else's file precisely rather than by eye: run it
+on theirs and on ours, and the differences are the lesson. Note that
+`dimensions_mm` is the bounding-box extent, not height above ground, and that
+it reads the base mesh — not the subdivided result.
+
 ## models/vehicle_cage.py — the cage layout
 
 Generic, per the note that this structure suits all basic vehicles. Nothing in
