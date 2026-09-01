@@ -1,0 +1,54 @@
+# Blender-modeller
+
+Learning and recording a specific way of modelling in Blender, and building
+reusable tooling around it.
+
+## Environment (verified, not assumed)
+
+This runs **headless Blender via the `bpy` PyPI module** — no GUI, no viewport.
+
+| | |
+|---|---|
+| Blender | 5.0.1 (`pip install bpy`) |
+| Python | 3.11 |
+| Cores | 4 |
+
+Verified working: mesh creation, `bmesh` topology operations, modifiers,
+evaluated (post-modifier) geometry, `.blend` save/load, and Cycles rendering.
+
+### Two constraints worth knowing before you write code here
+
+**EEVEE is unavailable.** It needs a GPU context (`libEGL.so.1`) that this
+container doesn't have. It does not raise a catchable exception — it aborts
+the process — so a `try/except` around it will not save you. Use `CYCLES`
+with `device = 'CPU'`.
+
+**Engine identifiers changed in 5.0.** `BLENDER_EEVEE_NEXT` no longer exists;
+the valid set is `BLENDER_EEVEE`, `BLENDER_WORKBENCH`, `CYCLES`.
+
+Render cost at 720x540 / 32 samples on 4 CPU cores is roughly 3-7s per frame,
+so iterating visually is cheap.
+
+## tools/preview.py
+
+Renders the scene so work can be *looked at* rather than asserted correct.
+
+```python
+from tools import preview
+
+preview.render("out.png", angle="three_quarter")        # single view
+preview.render("topo.png", wireframe=True)              # edge flow
+preview.contact_sheet("model")                          # front + side + 3/4
+```
+
+- Auto-frames the subject from its bounding sphere using the real camera FOV,
+  fitting the narrower image axis.
+- 85mm lens by default — long enough that perspective distortion doesn't lie
+  about proportion.
+- Clay override by default: form gets judged on silhouette and shading, not
+  on material.
+- `wireframe=True` adds a dark wire in its own material slot. It needs the
+  separate slot; a wire in clay grey against clay grey is invisible.
+
+`angle` accepts `front`, `side`, `top`, `three_quarter`, or an
+`(azimuth, elevation)` pair in degrees.
