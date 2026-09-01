@@ -65,5 +65,19 @@ be pushed between iterations without editing construction code. The car faces
 
 ```python
 from models import car_blockout
-car_blockout.build()
+body = car_blockout.build()
+car_blockout.check_folds()          # must be empty
+car_blockout.poly_report(body)      # cage faces, all-quad check, subdivided total
+car_blockout.arch_clearance(body)   # does the wheel actually fit its opening
 ```
+
+Low poly cage + Mirror + Subsurf. 80 quads in the cage, all quads. Modifier
+order is Mirror then Subsurf, mirror clipping on.
+
+Detail lines are creases, not extra loops — see `CREASE_LINES`. The sill and
+arch lip are hard, the character line and beltline partial.
+
+**`check_folds()` earns its place.** The lower rings must descend past the arch
+lip; author them ignoring the arch and the surface folds back through itself.
+It renders as a plausible car and measures 175mm of arch crown missing, which
+sends you hunting for a subdivision problem that isn't there.
