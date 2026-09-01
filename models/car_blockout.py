@@ -8,7 +8,7 @@ Dimensions are anchored to a Porsche 911 (992), not invented: wheelbase 2450,
 width 1852, overall length 4519. The overhang split is mid-engine — shorter
 front, longer rear deck — rather than the 911's own.
 
-Construction is in models/vehicle_cage.py, which is generic. This file is only
+Construction lives in models/vehicle_cage.py and is generic. This file is only
 the numbers: the envelope, and a (y, z) per profile line at each station.
 
 Front and rear bodywork are still open; they get modelled to meet this side.
@@ -38,8 +38,8 @@ PROPORTIONS = {
     "arch_front":       (0.46, 0.53),   # half-width along X, height above sill
     "arch_rear":        (0.46, 0.56),
 
-    # The fender turning inboard into the wheel well, rather than ending on a
-    # bare edge. This is what gives an arch its thickness.
+    # The fender turning inboard into the wheel well, so the arch has thickness
+    # rather than ending on a bare edge.
     "lip_inboard":      0.060,
     "lip_rise":         0.030,
 
@@ -47,34 +47,54 @@ PROPORTIONS = {
     "subdiv_render":    4,
 }
 
-# Per station: x, then (half-width, height) for each profile line down the side.
-# The sill and lip heights are computed from the arch, so only widths are given.
-_S = lambda x, top, edge, sh, ch, low, w_sill: {
-    "x": x, "top_centre": (0.0, top), "top_edge": edge,
-    "shoulder": sh, "character": ch, "lower_side": low, "w_sill": w_sill,
+# Ring order down the side, and how hard each is creased. The outline — the
+# wheel-well lip and the sill — is hard. Design lines are moderate; a fully
+# creased character line reads as damage rather than as a design line. Nothing
+# else is creased, and nothing else exists: between the outlines the surface is
+# a single smooth span.
+RING = {"top_centre": 0, "top_edge": 1, "shoulder": 2,
+        "character": 3, "sill": 4, "lip_inner": 5}
+
+CREASES = {
+    RING["lip_inner"]: 1.00,
+    RING["sill"]:      0.85,
+    RING["character"]: 0.55,
+    RING["shoulder"]:  0.50,
+    RING["top_edge"]:  0.30,
 }
 
+
+def _S(x, top, edge, shoulder, character, w_sill):
+    return {"x": x, "top_centre": (0.0, top), "top_edge": edge,
+            "shoulder": shoulder, "character": character, "w_sill": w_sill}
+
+
+# x, top-centre height, then (half-width, height) per line. Sill and lip
+# heights are computed from the arch, so the sill gives only its width.
+#
+# Stations only exist where they change the form. Three more were tried and
+# removed — at x = 1.900, 0.500 and -2.050 — because dropping them left length,
+# height and both arch clearances identical to the millimetre. The station at
+# x = -0.250 looks equally redundant but is not: it carries the canopy crown,
+# and without it overall height drops by 38mm.
 STATIONS = [
-    _S( 2.105, 0.48, (0.26, 0.46), (0.55, 0.42),  (0.66, 0.34),  (0.64, 0.26),  0.58),
-    _S( 1.900, 0.62, (0.38, 0.60), (0.72, 0.54),  (0.85, 0.42),  (0.83, 0.28),  0.78),
-    _S( 1.685, 0.72, (0.46, 0.70), (0.82, 0.62),  (0.91, 0.46),  (0.89, 0.29),  0.84),
-    _S( 1.455, 0.79, (0.50, 0.775), (0.88, 0.745), (0.925, 0.715), (0.905, 0.690), 0.86),
-    _S( 1.225, 0.84, (0.52, 0.830), (0.89, 0.805), (0.926, 0.775), (0.906, 0.748), 0.86),
-    _S( 0.995, 0.88, (0.54, 0.860), (0.90, 0.780), (0.926, 0.710), (0.906, 0.675), 0.86),
-    _S( 0.765, 0.92, (0.56, 0.90), (0.91, 0.74),  (0.926, 0.52), (0.900, 0.30), 0.85),
-    _S( 0.500, 1.02, (0.56, 0.99), (0.90, 0.76),  (0.920, 0.52), (0.890, 0.30), 0.84),
-    _S( 0.200, 1.22, (0.46, 1.16), (0.88, 0.80),  (0.910, 0.54), (0.880, 0.31), 0.83),
-    _S(-0.250, 1.27, (0.48, 1.21), (0.90, 0.82),  (0.920, 0.55), (0.890, 0.31), 0.83),
-    # Ring pulled inboard of the shoulder here and at the next station — the
-    # side undercutting, which is what makes the intake scoop read.
-    _S(-0.600, 1.22, (0.50, 1.16), (0.91, 0.82),  (0.880, 0.56), (0.840, 0.32), 0.82),
-    _S(-0.765, 1.16, (0.52, 1.10), (0.92, 0.82),  (0.850, 0.56), (0.820, 0.32), 0.82),
-    _S(-0.995, 1.08, (0.54, 1.02), (0.90, 0.860), (0.925, 0.760), (0.905, 0.710), 0.87),
-    _S(-1.225, 1.05, (0.56, 1.00), (0.90, 0.885), (0.925, 0.830), (0.905, 0.790), 0.87),
-    _S(-1.455, 0.99, (0.55, 0.95), (0.90, 0.850), (0.925, 0.770), (0.905, 0.710), 0.87),
-    _S(-1.685, 0.95, (0.53, 0.92), (0.88, 0.80),  (0.900, 0.56), (0.870, 0.32), 0.82),
-    _S(-2.050, 0.92, (0.50, 0.89), (0.84, 0.76),  (0.860, 0.54), (0.830, 0.32), 0.78),
-    _S(-2.414, 0.86, (0.44, 0.83), (0.74, 0.70),  (0.760, 0.52), (0.730, 0.34), 0.68),
+    _S( 2.105, 0.48, (0.26, 0.46),  (0.55, 0.42),  (0.66, 0.34),  0.58),
+    _S( 1.685, 0.72, (0.46, 0.70),  (0.82, 0.62),  (0.91, 0.46),  0.84),
+    _S( 1.455, 0.79, (0.50, 0.775), (0.88, 0.745), (0.925, 0.715), 0.86),
+    _S( 1.225, 0.84, (0.52, 0.830), (0.89, 0.805), (0.926, 0.775), 0.86),
+    _S( 0.995, 0.88, (0.54, 0.860), (0.90, 0.780), (0.926, 0.710), 0.86),
+    _S( 0.765, 0.92, (0.56, 0.90),  (0.91, 0.74),  (0.926, 0.52), 0.85),
+    _S( 0.200, 1.22, (0.46, 1.16),  (0.88, 0.80),  (0.910, 0.54), 0.83),
+    _S(-0.250, 1.27, (0.48, 1.21),  (0.90, 0.82),  (0.920, 0.55), 0.83),
+    # Character line pulled inboard of the shoulder here and at the next
+    # station — the side undercutting, which is what makes the scoop read.
+    _S(-0.600, 1.22, (0.50, 1.16),  (0.91, 0.82),  (0.880, 0.56), 0.82),
+    _S(-0.765, 1.16, (0.52, 1.10),  (0.92, 0.82),  (0.850, 0.56), 0.82),
+    _S(-0.995, 1.08, (0.54, 1.02),  (0.90, 0.860), (0.925, 0.760), 0.87),
+    _S(-1.225, 1.05, (0.56, 1.00),  (0.90, 0.885), (0.925, 0.830), 0.87),
+    _S(-1.455, 0.99, (0.55, 0.95),  (0.90, 0.850), (0.925, 0.770), 0.87),
+    _S(-1.685, 0.95, (0.53, 0.92),  (0.88, 0.80),  (0.900, 0.56), 0.82),
+    _S(-2.414, 0.86, (0.44, 0.83),  (0.74, 0.70),  (0.760, 0.52), 0.68),
 ]
 
 
@@ -100,10 +120,9 @@ def station_rings(row, p=None):
     w = row["w_sill"]
     return [
         row["top_centre"],
-        (-row["top_edge"][0],   row["top_edge"][1]),
-        (-row["shoulder"][0],   row["shoulder"][1]),
-        (-row["character"][0],  row["character"][1]),
-        (-row["lower_side"][0], row["lower_side"][1]),
+        (-row["top_edge"][0],  row["top_edge"][1]),
+        (-row["shoulder"][0],  row["shoulder"][1]),
+        (-row["character"][0], row["character"][1]),
         (-w, sill_z),
         (-(w - p["lip_inboard"]), sill_z + p["lip_rise"]),
     ]
@@ -128,7 +147,7 @@ def build(p=None, ground=True):
     bpy.context.scene.unit_settings.system = 'METRIC'
 
     me = bpy.data.meshes.new("body_side")
-    bm = vehicle_cage.build_cage(STATIONS, lambda r: station_rings(r, p))
+    bm = vehicle_cage.build_cage(STATIONS, lambda r: station_rings(r, p), CREASES)
     bm.to_mesh(me)
     bm.free()
 
@@ -165,7 +184,7 @@ def poly_report(body):
     ev = body.evaluated_get(dg).to_mesh()
     cage = len(body.data.polygons)
     quads = sum(1 for f in body.data.polygons if len(f.vertices) == 4)
-    return {"cage_faces": cage, "cage_quads": quads,
+    return {"cage_faces": cage, "cage_verts": len(body.data.vertices),
             "all_quads": quads == cage, "subdivided_faces": len(ev.polygons)}
 
 

@@ -53,26 +53,27 @@ preview.contact_sheet("model")                          # front + side + 3/4
 `angle` accepts `front`, `side`, `top`, `three_quarter`, or an
 `(azimuth, elevation)` pair in degrees.
 
-## models/vehicle_cage.py — the patch layout
+## models/vehicle_cage.py — the cage layout
 
 Generic, per the note that this structure suits all basic vehicles. Nothing in
 it knows what car it is.
 
 A body side is a set of named profile lines running the length of the car —
-top centre, top edge, shoulder, character, lower side, sill, and the lip that
-turns inboard into the wheel well. Each station gives a (y, z) per line and
-consecutive stations bridge into quads.
+top centre, top edge, shoulder, character, sill, and the lip that turns inboard
+into the wheel well. Each station gives a (y, z) per line and consecutive
+stations bridge into quads.
 
-The point is that **density follows the feature**. Lines flagged hard get
-support loops generated tight either side of them; everywhere else the quads
-stay large. A uniform grid renders soft however good the section curves are,
-because Catmull-Clark averages away any line carried by a single loop. Creases
-back the support loops up rather than replacing them.
+The governing rule is **as few edges as possible**. Definition comes from
+creasing the outline; the surface between outlines is left smooth and empty.
+Loops are not how an edge is held sharp — a crease is. Extra loops buy nothing
+a crease does not already give, and they make the cage much harder to push
+around later, which is what actually matters across the iterations a form goes
+through.
 
-Support distance is clamped to a fraction of the gap to the neighbouring line.
-Unclamped, a support loop where the side compresses — over an arch, where the
-whole flank collapses into a few centimetres — overshoots its neighbour and the
-surface self-intersects.
+Measured on this body: the wheel arch crowned at 0.702 with support loops
+either side of every hard line, and 0.703 without them — for 2.6x the face
+count. Stations get the same treatment: keep only the ones that change the
+form, and check by measuring rather than by eye.
 
 ## models/car_blockout.py — PIX3L concept
 

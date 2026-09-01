@@ -1,80 +1,26 @@
 """Generic vehicle cage construction — the patch layout, reusable per vehicle.
 
 A body side is described by a handful of named profile lines running the length
-of the car: the centreline of the top surface, the top-surface edge, the
-shoulder, the character line, the lower side, the sill, and the lip that turns
+of the car, from the centreline of the top surface down to the lip that turns
 inboard into the wheel well. Each cross-section ("station") gives a (y, z) for
 every line, and consecutive stations bridge into quads.
 
-The part that matters is density. A uniform grid renders soft, because a hard
-line carried by a single edge loop gets averaged away by Catmull-Clark. So
-lines flagged hard get support loops generated either side of them, tight
-against the line — the stacked parallel loops you see along a sill or around an
-arch on a hand-built cage. Everywhere else the quads stay large.
+The governing rule is **as few edges as possible**. Definition comes from
+creasing the outline — the arch lip, the sill, the design lines — and the
+surface between those outlines is left smooth and empty. Extra loops are not
+how a line is held sharp; a crease is. Loops added to firm up an edge cost
+nothing visually that a crease would not give, and they make the cage far
+harder to push around afterwards, which is the thing that actually matters
+across the iterations a form goes through.
 
-Creases back the support loops up rather than replacing them. Support loops
-alone soften under heavy subdivision; creases alone give an edge with no
-shoulder to it. Real cages use both, which is why the crease values here are
-moderate except on the open boundary.
+So: no support loops, no subdividing to add control. If a line needs to be
+harder, raise its crease. If a form needs to change, move the few points there
+are.
 
 Per-vehicle numbers live with the vehicle. Nothing here knows what car it is.
 """
 
-import math
 import bmesh
-
-# Order matters: this is the run from the centreline of the top surface down
-# the side to the wheel-well lip. `support` is the distance, in metres, at
-# which to place a supporting loop either side of a hard line.
-PROFILE_LINES = [
-    {"name": "top_centre", "hard": False},
-    {"name": "top_edge",   "hard": False},
-    {"name": "shoulder",   "hard": True,  "support": 0.030, "crease": 0.35},
-    {"name": "character",  "hard": True,  "support": 0.026, "crease": 0.30},
-    {"name": "lower_side", "hard": False},
-    {"name": "sill",       "hard": True,  "support": 0.022, "crease": 0.45},
-    {"name": "lip_inner",  "hard": True,  "support": 0.018, "crease": 1.00},
-]
-
-
-def _offset(a, b, d):
-    """Point at distance d from a, heading toward b."""
-    vy, vz = b[0] - a[0], b[1] - a[1]
-    length = math.hypot(vy, vz)
-    if length < 1e-9:
-        return a
-    return (a[0] + vy / length * d, a[1] + vz / length * d)
-
-
-def expand_rings(points, profile=None):
-    """Insert support loops around the hard lines.
-
-    Returns the expanded ring list and, for each hard line, the index its main
-    loop ended up at — the creaser needs that after the list has grown.
-
-    Support distance is clamped to a fraction of the gap to the neighbouring
-    line. Unclamped, a support loop on a tightly compressed section (over an
-    arch, where the whole side collapses into a few centimetres) overshoots its
-    neighbour and the surface self-intersects.
-    """
-    profile = profile or PROFILE_LINES
-    out, index_of = [], {}
-    for i, pt in enumerate(points):
-        spec = profile[i]
-        support = spec.get("support", 0.0) if spec.get("hard") else 0.0
-
-        if support and i > 0:
-            gap = math.dist(pt, points[i - 1])
-            out.append(_offset(pt, points[i - 1], min(support, gap * 0.45)))
-
-        index_of[spec["name"]] = len(out)
-        out.append(pt)
-
-        if support and i < len(points) - 1:
-            gap = math.dist(pt, points[i + 1])
-            out.append(_offset(pt, points[i + 1], min(support, gap * 0.45)))
-
-    return out, index_of
 
 
 def check_folds(stations, rings_fn):
@@ -88,31 +34,28 @@ def check_folds(stations, rings_fn):
     return bad
 
 
-def build_cage(stations, rings_fn, profile=None):
-    """Loft the stations into an all-quad cage with support loops and creases."""
-    profile = profile or PROFILE_LINES
-    bm = bmesh.new()
+def build_cage(stations, rings_fn, creases):
+    """Loft the stations into an all-quad cage and crease the named lines.
 
-    grid, index_of = [], None
-    for row in stations:
-        expanded, index_of = expand_rings(rings_fn(row), profile)
-        grid.append([bm.verts.new((row["x"], y, z)) for y, z in expanded])
+    `creases` maps ring index to crease value. The outline — the boundary loop
+    and the sill — wants to be hard; interior design lines want less, since a
+    fully creased character line reads as damage rather than as a design line.
+    """
+    bm = bmesh.new()
+    grid = [[bm.verts.new((row["x"], y, z)) for y, z in rings_fn(row)]
+            for row in stations]
 
     for s in range(len(grid) - 1):
         for r in range(len(grid[0]) - 1):
             bm.faces.new((grid[s][r], grid[s][r + 1],
                           grid[s + 1][r + 1], grid[s + 1][r]))
 
-    crease = bm.edges.layers.float.new("crease_edge")
-    for spec in profile:
-        value = spec.get("crease")
-        if not value:
-            continue
-        ring = index_of[spec["name"]]
+    crease_layer = bm.edges.layers.float.new("crease_edge")
+    for ring, value in creases.items():
         for s in range(len(grid) - 1):
             edge = bm.edges.get((grid[s][ring], grid[s + 1][ring]))
             if edge is not None:
-                edge[crease] = value
+                edge[crease_layer] = value
 
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     return bm
