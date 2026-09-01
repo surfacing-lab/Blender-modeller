@@ -53,15 +53,27 @@ preview.contact_sheet("model")                          # front + side + 3/4
 `angle` accepts `front`, `side`, `top`, `three_quarter`, or an
 `(azimuth, elevation)` pair in degrees.
 
-## models/car_blockout.py
+## models/car_blockout.py — PIX3L concept
 
-Stage 1-2 of the build order: body side profile, then wheels as plain cylinders
-for proportion. Front and rear are deliberately not modelled yet — they get
-built to meet this side.
+Mid-engine supercar, body side blocked out. Styling from the supplied
+reference: cab-forward canopy, long rear deck over the engine, high haunches,
+intake scoop ahead of the rear arch, squared arches under a hard shoulder.
 
-All dimensions live in `PROPORTIONS` (metres, real-world scale) so the form can
-be pushed between iterations without editing construction code. The car faces
-+X, up is +Z, and the side panel is mirrored across Y=0.
+Dimensions are anchored to a Porsche 911 (992), not invented:
+
+| | Target | Built |
+|---|---|---|
+| Length | 4519 mm | 4519 mm |
+| Width | 1852 mm | 1848 mm |
+| Wheelbase | 2450 mm | 2450 mm |
+| Height | — | 1233 mm |
+
+Overhangs are split mid-engine (880 front / 1189 rear) rather than the 911's.
+Wheels are staggered front to rear. Front and rear bodywork are not modelled
+yet — they get built to meet this side.
+
+`blend/pix3l_blockout.blend` is the saved working file; `renders/` holds the
+current views.
 
 ```python
 from models import car_blockout

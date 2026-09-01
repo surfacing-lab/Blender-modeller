@@ -1,27 +1,25 @@
-"""Body side as a low-poly quad cage, driven by Subsurf and Mirror.
+"""PIX3L concept — mid-engine supercar, body side blocked out.
 
-The cage is a loft: cross-sections ("stations") along the length of the car,
-each a run of six rings from the centreline of the top surface, out over the
-shoulder, down the side, to the arch lip. Consecutive stations bridge into
-quads. Smoothness comes from the Subdivision Surface modifier, not from vertex
-count — the cage stays in the low tens of faces.
+Styling comes from the reference images: cab-forward canopy pushed well ahead
+of centre, long rear deck over the engine, high haunches, a deep intake scoop
+carved in ahead of the rear arch, squared-off arches under a hard shoulder
+line, low pointed nose, deep dark sill.
 
-Only the left half exists. Mirror handles the other side, with clipping on so
-the centreline seam welds rather than tearing open under subdivision. Modifier
-order is Mirror then Subsurf; reversed, the centreline is rounded before it is
-welded and the body splits down the middle.
+Dimensions are anchored to a Porsche 911 (992) rather than invented:
+wheelbase 2450, width 1852, overall length 4519. The overhang split is
+mid-engine (shorter front, longer rear deck) rather than the 911's own.
+
+The cage is a loft through cross-sections, six rings each, running from the
+centreline of the top surface out over the shoulder, down the side, to the arch
+lip. Smoothness comes from Subsurf, not vertex count. Only the left half
+exists; Mirror handles the rest, clipping on so the seam welds. Modifier order
+is Mirror then Subsurf.
 
 Around the wheel openings every ring lifts with the arch, so the fender rides
-above the wheel and the side tucks under it. Ring heights that ignore the arch
-put the lower rings *below* the arch lip, which folds the surface back through
-itself — invisible in a render, and it makes the arch measure 175mm shallower
-than authored.
+over the wheel and the side tucks under it. Rings authored at fixed heights
+that ignore the arch fold the surface back through itself — see check_folds.
 
-Detail lines are held by creases rather than by extra loops: the arch lip and
-sill hard, the character line and beltline partial. See CREASE_LINES.
-
-Front and rear are left open — they are modelled to meet this side next, so the
-nose and tail rings are the boundary for now.
+Front and rear are still open; they get modelled to meet this side next.
 
 Real-world scale, metres. Car faces +X, up is +Z, mirrored across Y=0.
 """
@@ -31,59 +29,61 @@ import bpy
 import bmesh
 
 PROPORTIONS = {
-    "wheelbase":        2.65,
-    "front_overhang":   0.90,
-    "rear_overhang":    0.95,
+    # Envelope, from the 992.
+    "wheelbase":        2.450,
+    "front_overhang":   0.880,
+    "rear_overhang":    1.189,   # long rear deck: mid-engine, not 911
+    "half_width":       0.926,   # 1852mm overall
 
-    "wheel_radius":     0.34,
-    "wheel_width":      0.28,
-    "track_half":       0.81,
+    # Staggered wheels, as in the reference.
+    "wheel_r_front":    0.340,
+    "wheel_r_rear":     0.355,
+    "wheel_w_front":    0.300,
+    "wheel_w_rear":     0.340,
+    "track_half_front": 0.775,
+    "track_half_rear":  0.755,
 
-    "sill":             0.25,
-    "arch_half_width":  0.42,   # elliptical, so the arch meets the sill cleanly
-    "arch_height":      0.49,   # crown lands at 0.74
+    "sill":             0.20,
+    # Per-axle arch openings (half-width along X, height above the sill).
+    "arch_front":       (0.46, 0.53),
+    "arch_rear":        (0.46, 0.56),
 
     "subdiv_viewport":  2,
-    "subdiv_render":    3,
+    "subdiv_render":    4,
 }
 
-# x, z_top, (w1,z1) top-surface edge, (w2,z2) shoulder, (w3,z3) widest,
-# (w4,z4) lower side. The final ring sits at the arch/sill line, whose height
-# is computed, with its width given by w5.
-#
-# Over the arches the rings compress into the thin band between the fender top
-# and the arch lip — which is what a low car with big wheels actually looks
-# like, and what keeps the surface from folding.
+# x, z_top, (w1,z1) top edge, (w2,z2) shoulder, (w3,z3) widest,
+# (w4,z4) lower side, w5 at the arch/sill line (height computed).
 STATIONS = [
-    ( 2.225, 0.62, (0.30, 0.60), (0.62, 0.52), (0.70, 0.42), (0.68, 0.32), 0.62),
-    ( 1.980, 0.72, (0.42, 0.70), (0.80, 0.60), (0.88, 0.46), (0.86, 0.33), 0.80),
-    ( 1.745, 0.78, (0.48, 0.76), (0.88, 0.66), (0.94, 0.50), (0.92, 0.34), 0.86),
-    ( 1.535, 0.82, (0.50, 0.80), (0.90, 0.740), (0.95, 0.712), (0.93, 0.690), 0.88),
-    ( 1.325, 0.85, (0.52, 0.83), (0.90, 0.800), (0.95, 0.775), (0.93, 0.755), 0.88),
-    ( 1.115, 0.88, (0.54, 0.86), (0.91, 0.780), (0.95, 0.720), (0.93, 0.695), 0.88),
-    ( 0.905, 0.92, (0.55, 0.90), (0.93, 0.74), (0.95, 0.54), (0.93, 0.36), 0.88),
-    ( 0.600, 0.98, (0.58, 0.96), (0.94, 0.78), (0.95, 0.56), (0.93, 0.37), 0.88),
-    ( 0.050, 1.26, (0.42, 1.22), (0.92, 0.88), (0.95, 0.60), (0.93, 0.40), 0.88),
-    (-0.550, 1.28, (0.44, 1.24), (0.93, 0.90), (0.95, 0.62), (0.93, 0.41), 0.88),
-    (-0.905, 1.22, (0.44, 1.18), (0.94, 0.88), (0.95, 0.60), (0.93, 0.40), 0.88),
-    (-1.115, 1.12, (0.46, 1.08), (0.94, 0.840), (0.96, 0.740), (0.94, 0.700), 0.88),
-    (-1.325, 1.04, (0.50, 1.00), (0.94, 0.860), (0.96, 0.790), (0.94, 0.762), 0.88),
-    (-1.535, 1.00, (0.52, 0.96), (0.93, 0.820), (0.95, 0.735), (0.93, 0.700), 0.87),
-    (-1.745, 0.98, (0.52, 0.94), (0.90, 0.76), (0.92, 0.56), (0.90, 0.38), 0.84),
-    (-2.020, 0.94, (0.50, 0.90), (0.86, 0.72), (0.88, 0.54), (0.86, 0.38), 0.80),
-    (-2.275, 0.86, (0.44, 0.82), (0.76, 0.66), (0.78, 0.52), (0.76, 0.38), 0.70),
+    ( 2.105, 0.48, (0.26, 0.46), (0.55, 0.42), (0.66, 0.34), (0.64, 0.26), 0.58),
+    ( 1.900, 0.62, (0.38, 0.60), (0.72, 0.54), (0.85, 0.42), (0.83, 0.28), 0.78),
+    ( 1.685, 0.72, (0.46, 0.70), (0.82, 0.62), (0.91, 0.46), (0.89, 0.29), 0.84),
+    ( 1.455, 0.79, (0.50, 0.775), (0.88, 0.745), (0.925, 0.715), (0.905, 0.690), 0.86),
+    ( 1.225, 0.84, (0.52, 0.830), (0.89, 0.805), (0.926, 0.775), (0.906, 0.748), 0.86),
+    ( 0.995, 0.88, (0.54, 0.860), (0.90, 0.780), (0.926, 0.710), (0.906, 0.675), 0.86),
+    ( 0.765, 0.92, (0.56, 0.90), (0.91, 0.74), (0.926, 0.52), (0.900, 0.30), 0.85),
+    ( 0.500, 1.02, (0.56, 0.99), (0.90, 0.76), (0.920, 0.52), (0.890, 0.30), 0.84),
+    ( 0.200, 1.22, (0.46, 1.16), (0.88, 0.80), (0.910, 0.54), (0.880, 0.31), 0.83),
+    (-0.250, 1.27, (0.48, 1.21), (0.90, 0.82), (0.920, 0.55), (0.890, 0.31), 0.83),
+    (-0.600, 1.22, (0.50, 1.16), (0.91, 0.82), (0.880, 0.56), (0.840, 0.32), 0.82),
+    (-0.765, 1.16, (0.52, 1.10), (0.92, 0.82), (0.850, 0.56), (0.820, 0.32), 0.82),
+    (-0.995, 1.08, (0.54, 1.02), (0.90, 0.860), (0.925, 0.760), (0.905, 0.710), 0.87),
+    (-1.225, 1.05, (0.56, 1.00), (0.90, 0.885), (0.925, 0.830), (0.905, 0.790), 0.87),
+    (-1.455, 0.99, (0.55, 0.95), (0.90, 0.850), (0.925, 0.770), (0.905, 0.710), 0.87),
+    (-1.685, 0.95, (0.53, 0.92), (0.88, 0.80), (0.900, 0.56), (0.870, 0.32), 0.82),
+    (-2.050, 0.92, (0.50, 0.89), (0.84, 0.76), (0.860, 0.54), (0.830, 0.32), 0.78),
+    (-2.414, 0.86, (0.44, 0.83), (0.74, 0.70), (0.760, 0.52), (0.730, 0.34), 0.68),
 ]
 
-# Ring-following edge loops to crease, marking the detail lines. Values below
-# 1.0 give a defined but soft line, which is what a character line wants — a
-# fully creased one reads as damage. x_range limits a line to part of the car.
+# The scoop ahead of the rear arch is the two stations where ring 3 pulls
+# inboard of ring 2 (x = -0.600 and -0.765) — the side surface undercutting
+# the shoulder, which is what makes the intake read.
+
 CREASE_LINES = [
     {"name": "sill_and_arch_lip", "ring": 5, "crease": 1.00},
-    {"name": "character_line",    "ring": 3, "crease": 0.55},
-    {"name": "beltline",          "ring": 2, "crease": 0.40, "x_range": (-1.05, 0.75)},
+    {"name": "shoulder",          "ring": 2, "crease": 0.55},
+    {"name": "character_line",    "ring": 3, "crease": 0.45},
 ]
-
-RING_SILL = 5
 
 
 def _axles(p):
@@ -91,11 +91,10 @@ def _axles(p):
 
 
 def sill_height(x, p):
-    """Bottom edge of the body side at x, lifting into an elliptical opening
-    over each axle. Elliptical rather than circular so the arch meets the sill
-    exactly, leaving no step to smooth away."""
-    w, h = p["arch_half_width"], p["arch_height"]
-    for cx in _axles(p):
+    """Bottom edge of the body side, lifting into an elliptical opening over
+    each axle. Elliptical so the arch meets the sill exactly, no step."""
+    fx, rx = _axles(p)
+    for cx, (w, h) in ((fx, p["arch_front"]), (rx, p["arch_rear"])):
         dx = x - cx
         if abs(dx) < w:
             return p["sill"] + h * math.sqrt(1.0 - (dx / w) ** 2)
@@ -103,21 +102,14 @@ def sill_height(x, p):
 
 
 def station_rings(row, p):
-    """The six (y, z) ring positions for one station, outboard side."""
     x, z_top, r1, r2, r3, r4, w5 = row
-    return [
-        (0.0, z_top),                      # on the mirror plane
-        (-r1[0], r1[1]),
-        (-r2[0], r2[1]),
-        (-r3[0], r3[1]),
-        (-r4[0], r4[1]),
-        (-w5, sill_height(x, p)),
-    ]
+    return [(0.0, z_top), (-r1[0], r1[1]), (-r2[0], r2[1]),
+            (-r3[0], r3[1]), (-r4[0], r4[1]), (-w5, sill_height(x, p))]
 
 
 def check_folds(p=None):
-    """Every station's rings must descend. A station that does not is folded
-    back through itself, which no amount of creasing or extra loops will fix."""
+    """Rings must descend at every station. One that does not is folded back
+    through itself — invisible in a render, fatal to the surface."""
     p = p or PROPORTIONS
     bad = []
     for row in STATIONS:
@@ -131,7 +123,6 @@ def _cage(p):
     bm = bmesh.new()
     grid = [[bm.verts.new((row[0], y, z)) for y, z in station_rings(row, p)]
             for row in STATIONS]
-
     for s in range(len(grid) - 1):
         for r in range(len(grid[0]) - 1):
             bm.faces.new((grid[s][r], grid[s][r + 1],
@@ -139,12 +130,11 @@ def _cage(p):
 
     crease = bm.edges.layers.float.new("crease_edge")
     for line in CREASE_LINES:
-        ring = line["ring"]
         lo, hi = line.get("x_range", (-1e9, 1e9))
         for s in range(len(grid) - 1):
             if not (lo <= STATIONS[s][0] <= hi and lo <= STATIONS[s + 1][0] <= hi):
                 continue
-            edge = bm.edges.get((grid[s][ring], grid[s + 1][ring]))
+            edge = bm.edges.get((grid[s][line["ring"]], grid[s + 1][line["ring"]]))
             if edge is not None:
                 edge[crease] = line["crease"]
 
@@ -152,12 +142,10 @@ def _cage(p):
     return bm
 
 
-def _wheel(name, x, y, p):
-    # Proportion placeholder, replaced once real wheel data goes in — no subdiv.
+def _wheel(name, x, y, radius, width):
     bpy.ops.mesh.primitive_cylinder_add(
-        vertices=24, radius=p["wheel_radius"], depth=p["wheel_width"],
-        location=(x, y, p["wheel_radius"]), rotation=(math.pi / 2, 0, 0),
-    )
+        vertices=24, radius=radius, depth=width,
+        location=(x, y, radius), rotation=(math.pi / 2, 0, 0))
     bpy.context.active_object.name = name
 
 
@@ -183,14 +171,13 @@ def build(p=None, ground=True):
     subsurf = body.modifiers.new("subsurf", 'SUBSURF')
     subsurf.levels = p["subdiv_viewport"]
     subsurf.render_levels = p["subdiv_render"]
-    # Keeps the open nose, tail and arch boundaries from being pulled inward.
     subsurf.boundary_smooth = 'PRESERVE_CORNERS'
 
     fx, rx = _axles(p)
-    t = p["track_half"]
-    for name, x, y in [("wheel_FL", fx, -t), ("wheel_FR", fx, t),
-                       ("wheel_RL", rx, -t), ("wheel_RR", rx, t)]:
-        _wheel(name, x, y, p)
+    _wheel("wheel_FL", fx, -p["track_half_front"], p["wheel_r_front"], p["wheel_w_front"])
+    _wheel("wheel_FR", fx,  p["track_half_front"], p["wheel_r_front"], p["wheel_w_front"])
+    _wheel("wheel_RL", rx, -p["track_half_rear"],  p["wheel_r_rear"],  p["wheel_w_rear"])
+    _wheel("wheel_RR", rx,  p["track_half_rear"],  p["wheel_r_rear"],  p["wheel_w_rear"])
 
     if ground:
         length = p["wheelbase"] + p["front_overhang"] + p["rear_overhang"]
@@ -210,24 +197,35 @@ def poly_report(body):
 
 
 def arch_clearance(body, p=None):
-    """Lowest body surface directly over each axle, versus the top of the
-    wheel. Positive means the wheel actually fits in its opening."""
     p = p or PROPORTIONS
     dg = bpy.context.evaluated_depsgraph_get()
     ev = body.evaluated_get(dg).to_mesh()
     out = {}
-    for label, cx in zip(("front", "rear"), _axles(p)):
+    for label, cx, r in (("front", _axles(p)[0], p["wheel_r_front"]),
+                         ("rear",  _axles(p)[1], p["wheel_r_rear"])):
         zs = [v.co.z for v in ev.vertices if abs(v.co.x - cx) < 0.06 and v.co.y < 0]
         crown = min(zs) if zs else float("nan")
-        out[label] = {"crown": round(crown, 3),
-                      "clearance": round(crown - p["wheel_radius"] * 2, 3)}
+        out[label] = {"crown": round(crown, 3), "clearance": round(crown - r * 2, 3)}
     return out
 
 
+def dimensions(body, p=None):
+    """Overall envelope of the finished body, to check against the target."""
+    p = p or PROPORTIONS
+    dg = bpy.context.evaluated_depsgraph_get()
+    ev = body.evaluated_get(dg).to_mesh()
+    xs = [v.co.x for v in ev.vertices]
+    ys = [v.co.y for v in ev.vertices]
+    zs = [v.co.z for v in ev.vertices]
+    return {"length_mm": round((max(xs) - min(xs)) * 1000),
+            "width_mm":  round((max(ys) - min(ys)) * 1000),
+            "height_mm": round(max(zs) * 1000),
+            "wheelbase_mm": round(p["wheelbase"] * 1000)}
+
+
 if __name__ == "__main__":
-    folds = check_folds()
-    print("folded stations:", folds or "none")
+    print("folded stations:", check_folds() or "none")
     b = build(ground=False)
     print(poly_report(b))
-    print("intended crown:", round(PROPORTIONS["sill"] + PROPORTIONS["arch_height"], 3))
     print(arch_clearance(b))
+    print(dimensions(b))
