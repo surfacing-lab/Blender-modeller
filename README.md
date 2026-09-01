@@ -53,6 +53,27 @@ preview.contact_sheet("model")                          # front + side + 3/4
 `angle` accepts `front`, `side`, `top`, `three_quarter`, or an
 `(azimuth, elevation)` pair in degrees.
 
+## models/vehicle_cage.py — the patch layout
+
+Generic, per the note that this structure suits all basic vehicles. Nothing in
+it knows what car it is.
+
+A body side is a set of named profile lines running the length of the car —
+top centre, top edge, shoulder, character, lower side, sill, and the lip that
+turns inboard into the wheel well. Each station gives a (y, z) per line and
+consecutive stations bridge into quads.
+
+The point is that **density follows the feature**. Lines flagged hard get
+support loops generated tight either side of them; everywhere else the quads
+stay large. A uniform grid renders soft however good the section curves are,
+because Catmull-Clark averages away any line carried by a single loop. Creases
+back the support loops up rather than replacing them.
+
+Support distance is clamped to a fraction of the gap to the neighbouring line.
+Unclamped, a support loop where the side compresses — over an arch, where the
+whole flank collapses into a few centimetres — overshoots its neighbour and the
+surface self-intersects.
+
 ## models/car_blockout.py — PIX3L concept
 
 Mid-engine supercar, body side blocked out. Styling from the supplied
