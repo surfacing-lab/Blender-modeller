@@ -2,8 +2,7 @@
 
 The live copy lives in the skill's `references/workflow-lessons.md`, inside the
 session container, which is reclaimed when the session ends. This mirror is the
-durable one. Copy it back into the skill at the start of a session, and mirror
-any new lessons back here before the session ends.
+durable one.
 
 ---
 
@@ -52,6 +51,27 @@ dense geometry directly. Mirror across the centreline rather than modelling
 both sides. Modifier order is Mirror then Subsurf, and the mirror needs
 clipping on so the centreline seam welds instead of splitting open under
 subdivision.
+
+**THE section architecture (2026-09-02) — the single biggest thing missed.**
+The reference is a NARROW CENTRAL TUB with WIDE FENDER FLARES bursting out at
+the top, and the wheel sits in the gap between them. Measured at the front
+axle: tub 0.56 half-width through the lower two thirds, flare 0.88 above it.
+Between the axles the body fills out to ~0.85 with the side tucked IN to a
+waist at mid-height (0.70 against 0.82 at the rocker).
+
+A cage built at one width for every height is a slab, and cutting holes in a
+slab does not make it a car. Neither profile tuning nor crease tuning nor
+station pruning touches this — all of that was polishing the wrong object for
+days. A wheel arch is the GAP BETWEEN the flare and the tub, not a scallop
+lifted out of a sill line.
+
+Diagnose this by sampling half-width at FIXED HEIGHTS across stations, on both
+models. A section that reads the same width at every height is the tell.
+
+**Also worth saying plainly:** a grey clay blockout will never "look like" a
+finished hero render. Glass, wheels, lamps, materials and lighting carry most
+of a car's visual identity. Compare blockout to blockout, and say so rather
+than chasing a resemblance the medium cannot deliver.
 
 **Cutting the openings SHRINKS the cage (2026-09-02, their point).** Once the
 glass aperture, grille and side intake are cut, rings and stations that existed

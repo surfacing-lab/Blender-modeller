@@ -66,8 +66,8 @@ PROPORTIONS = {
 # only 1.5% inboard of the character line and the two were fighting. Envelope
 # measurements alone would not have settled it: they cannot see a design line
 # disappear, so the renders were compared before it went.
-RING_ORDER = ["top_centre", "top_edge", "shoulder", "character", "sill", "lip_inner"]
-ACTIVE_RINGS = ["top_centre", "top_edge", "character", "sill", "lip_inner"]
+RING_ORDER = ["top_centre", "top_edge", "flare", "waist", "rocker", "floor"]
+ACTIVE_RINGS = list(RING_ORDER)
 
 # Tuned against the crease values recovered from Concept_Model_WIP4.blend,
 # which run far harder than first assumed: 45% of edges creased, median 0.99,
@@ -84,11 +84,15 @@ ACTIVE_RINGS = ["top_centre", "top_edge", "character", "sill", "lip_inner"]
 # should fall as the openings go in, not climb.
 APERTURES = [
     # Canopy opening, so the glass can be a separate shrinkwrapped patch.
-    {"name": "cockpit",     "x": (-0.90,  0.30), "rings": ("top_centre",)},
-    # Lower front intake.
-    {"name": "grille",      "x": ( 1.97,  2.05), "rings": ("character",)},
-    # Scoop ahead of the rear arch.
-    {"name": "side_intake", "x": (-1.11, -0.84), "rings": ("character",)},
+    {"name": "cockpit",    "x": (-0.90,  0.30), "rings": ("top_centre",)},
+    # Wheel wells: the gap between the flare above and the tub inboard. This
+    # is what a wheel arch actually is on the reference — not a scallop cut up
+    # from a sill line, which is what it had been.
+    {"name": "well_front", "x": ( 0.93,  1.77), "rings": ("flare",)},
+    {"name": "well_rear",  "x": (-1.77, -0.93), "rings": ("flare",)},
+    # Lower front intake, and the scoop ahead of the rear arch.
+    {"name": "grille",     "x": ( 1.85,  2.00), "rings": ("waist",)},
+    {"name": "side_scoop", "x": (-0.90, -0.55), "rings": ("waist",)},
 ]
 
 
@@ -106,10 +110,9 @@ def _skip(x0, x1, ring):
 
 
 CREASE_BY_NAME = {
-    "lip_inner": 1.00,
-    "sill":      0.99,
-    "character": 0.99,
-    "shoulder":  0.45,
+    "floor":     1.00,   # bottom outline
+    "flare":     0.99,   # the fender line — the hard edge the whole car hangs on
+    "waist":     0.60,
     "top_edge":  0.33,
 }
 
@@ -119,101 +122,70 @@ def creases():
             if n in ACTIVE_RINGS}
 
 
-# Body profile sampled off Concept_Model_WIP4.blend:
-#   x, top-surface height at the centreline, half-width of the top-surface
-#   edge, half-width at the widest point, and the bottom edge.
+# Section widths sampled off Concept_Model_WIP4.blend at fixed heights:
+#   x, top-surface height, then half-width of the top edge, the flare, the
+#   waist, the rocker and the floor.
 #
-# Sampled in a wheelbase-CENTRED frame. Their file's origin is not at the
-# wheelbase centre — the axles sit at -1.471 and +1.231, midpoint -0.120 — so
-# an earlier pass that sampled against +/-1.351 had the whole profile shifted
-# 120mm along the car relative to its own wheels.
+# The architecture this captures is the thing that was missing. The reference
+# is a NARROW CENTRAL TUB with WIDE FENDER FLARES bursting out at the top, and
+# the wheel sits in the gap between them — at the front axle the tub is 0.56
+# half-width while the flare above it reaches 0.88. Between the axles the body
+# fills out to about 0.85, with the side tucked IN to a waist at mid-height.
 #
-# Three features the measurements forced, all of which had been modelled wrong:
-#   - the nose tapers to a narrow low prow (0.339 half-width, 0.059 at the top
-#     edge), not the blunt round bulb it had become;
-#   - the canopy is a separate narrow structure standing on a wide body. It
-#     rises 290mm across the 100mm between x=0.35 and x=0.25 while the top edge
-#     pinches from 0.775 to 0.394. Both stations are needed or it ramps;
-#   - the tail bottom lifts to 0.460 for the diffuser cutaway, rather than
-#     running to the sill.
+# Modelling it as one width at every height gives a slab with holes cut in it,
+# which is what it was, and no amount of profile or crease tuning rescues that.
 PROFILE = [
-    ( 2.079, 0.490, 0.059, 0.339, 0.120),   # prow, capped
-    ( 2.040, 0.516, 0.370, 0.410, 0.114),
-    ( 1.980, 0.549, 0.479, 0.511, 0.105),
-    ( 1.850, 0.622, 0.720, 0.898, 0.091),
-    ( 1.600, 0.755, 0.817, 0.893, 0.091),
-    ( 1.351, 0.791, 0.828, 0.893, 0.091),   # front axle
-    # Stations at x = 0.850 and -0.400 removed: both sat on smooth runs and
-    # cost nothing measurable once tested one at a time.
-    ( 1.100, 0.800, 0.797, 0.894, 0.091),
-    ( 0.350, 0.759, 0.775, 0.826, 0.095),   # cowl, base of the screen
-    ( 0.250, 1.049, 0.394, 0.824, 0.095),   # top of the screen
-    ( 0.000, 1.063, 0.494, 0.818, 0.095),   # canopy crown, mid-wheelbase
-    (-0.850, 0.970, 0.449, 0.875, 0.095),
-    (-1.100, 0.870, 0.739, 0.900, 0.091),
-    (-1.351, 0.844, 0.766, 0.900, 0.091),   # rear axle
-    (-1.600, 0.793, 0.746, 0.893, 0.131),
-    (-1.800, 0.707, 0.715, 0.835, 0.184),
-    (-1.942, 0.658, 0.649, 0.712, 0.460),   # tail, capped, diffuser cutaway
+    ( 2.079, 0.49, 0.06, 0.33, 0.30, 0.30, 0.26),   # prow
+    ( 1.900, 0.62, 0.45, 0.83, 0.83, 0.78, 0.62),
+    ( 1.700, 0.68, 0.50, 0.85, 0.86, 0.88, 0.70),
+    ( 1.500, 0.79, 0.52, 0.87, 0.57, 0.57, 0.50),   # tub narrows, flare stays
+    ( 1.351, 0.80, 0.53, 0.88, 0.56, 0.58, 0.50),   # front axle
+    ( 1.150, 0.80, 0.53, 0.89, 0.60, 0.67, 0.56),
+    ( 0.900, 0.80, 0.54, 0.86, 0.88, 0.85, 0.70),
+    ( 0.500, 0.76, 0.55, 0.80, 0.73, 0.79, 0.66),
+    ( 0.150, 1.06, 0.42, 0.80, 0.70, 0.81, 0.68),   # screen
+    (-0.150, 1.07, 0.44, 0.80, 0.70, 0.82, 0.68),   # canopy crown
+    (-0.500, 1.04, 0.46, 0.81, 0.70, 0.83, 0.69),
+    (-0.900, 0.94, 0.47, 0.85, 0.85, 0.85, 0.70),
+    (-1.150, 0.85, 0.50, 0.84, 0.67, 0.69, 0.58),
+    (-1.351, 0.83, 0.52, 0.86, 0.65, 0.66, 0.56),   # rear axle
+    (-1.550, 0.79, 0.51, 0.88, 0.69, 0.69, 0.58),
+    (-1.750, 0.72, 0.50, 0.81, 0.84, 0.81, 0.66),
+    (-1.942, 0.66, 0.42, 0.60, 0.73, 0.50, 0.40),   # tail
 ]
 
-# Where the remaining lines sit between the top surface and the sill, as a
-# fraction of the height available at that station. Fractions rather than
-# absolute heights, so the lines stay clear of the arch automatically wherever
-# the sill lifts — which is what folded the cage when the heights were fixed.
-SHOULDER_F, CHARACTER_F = 0.58, 0.30
-TOP_EDGE_F, SHOULDER_W, SILL_W = 0.06, 0.985, 0.930
+# Heights of the lower rings. The flare rides just under the top surface but
+# never above 0.72, so it stays put through the tall cabin instead of being
+# dragged up with the canopy.
+FLARE_Z_MAX, FLARE_GAP = 0.72, 0.06
+WAIST_Z, ROCKER_Z, FLOOR_Z = 0.36, 0.17, 0.10
 
-STATIONS = [{"x": x, "top_z": tz, "edge_w": ew, "wide_w": ww, "bottom_z": bz}
-            for x, tz, ew, ww, bz in PROFILE]
+STATIONS = [{"x": x, "top_z": tz, "edge_w": ew, "flare_w": fw,
+             "waist_w": ww, "rocker_w": rw, "floor_w": flw}
+            for x, tz, ew, fw, ww, rw, flw in PROFILE]
 
 
 def _axles(p):
     return p["wheelbase"] / 2, -p["wheelbase"] / 2
 
 
-def _bottom_at(x):
-    """Measured bottom edge, interpolated between stations. Carries the tail's
-    diffuser cutaway, which a flat sill line cannot."""
-    xs = [row[0] for row in PROFILE]
-    if x >= xs[0]:
-        return PROFILE[0][4]
-    if x <= xs[-1]:
-        return PROFILE[-1][4]
-    for i in range(len(xs) - 1):
-        if xs[i] >= x >= xs[i + 1]:
-            t = (xs[i] - x) / (xs[i] - xs[i + 1])
-            return PROFILE[i][4] + t * (PROFILE[i + 1][4] - PROFILE[i][4])
-    return PROFILE[-1][4]
-
-
 def sill_height(x, p):
-    """Bottom edge of the body side: the measured bottom line, lifted into an
-    elliptical opening over each axle. Elliptical so the arch meets the sill
-    exactly, with no step. Whichever is higher wins, so the arch survives at
-    the axles and the diffuser cutaway survives at the tail."""
-    base = _bottom_at(x)
-    fx, rx = _axles(p)
-    for cx, (w, h) in ((fx, p["arch_front"]), (rx, p["arch_rear"])):
-        dx = x - cx
-        if abs(dx) < w:
-            return max(base, p["sill"] + h * math.sqrt(1.0 - (dx / w) ** 2))
-    return base
+    """Kept for the checks; the floor line is flat now that the wheel openings
+    are apertures in the flare rather than a scallop lifted out of a sill."""
+    return FLOOR_Z
 
 
 def station_rings(row, p=None):
     """The (y, z) control points for one station, outboard side."""
-    p = p or PROPORTIONS
-    sill_z = sill_height(row["x"], p)
-    top_z, wide = row["top_z"], row["wide_w"]
-    span = max(top_z - sill_z, 1e-4)
+    top_z = row["top_z"]
+    flare_z = min(top_z - FLARE_GAP, FLARE_Z_MAX)
     full = {
         "top_centre": (0.0, top_z),
-        "top_edge":   (-row["edge_w"],     top_z - span * TOP_EDGE_F),
-        "shoulder":   (-wide * SHOULDER_W, sill_z + span * SHOULDER_F),
-        "character":  (-wide,              sill_z + span * CHARACTER_F),
-        "sill":       (-wide * SILL_W,     sill_z),
-        "lip_inner":  (-(wide * SILL_W - p["lip_inboard"]), sill_z + p["lip_rise"]),
+        "top_edge":   (-row["edge_w"],   top_z - FLARE_GAP * 0.5),
+        "flare":      (-row["flare_w"],  flare_z),
+        "waist":      (-row["waist_w"],  min(WAIST_Z, flare_z - 0.02)),
+        "rocker":     (-row["rocker_w"], min(ROCKER_Z, WAIST_Z - 0.02)),
+        "floor":      (-row["floor_w"],  FLOOR_Z),
     }
     return [full[name] for name in ACTIVE_RINGS]
 
