@@ -85,11 +85,15 @@ ACTIVE_RINGS = list(RING_ORDER)
 APERTURES = [
     # Canopy opening, so the glass can be a separate shrinkwrapped patch.
     {"name": "cockpit",    "x": (-0.90,  0.30), "rings": ("top_centre",)},
-    # Wheel wells: the gap between the flare above and the tub inboard. This
+    # Wheel wells: the gap between the flare above and the tub inboard. The
+    # x-ranges land on stations placed at the wheels' own front and rear
+    # extremes, so the opening matches the tyre instead of overshooting it and
+    # leaving slots at either end — an aperture can only cut on stations that
+    # exist. This
     # is what a wheel arch actually is on the reference — not a scallop cut up
     # from a sill line, which is what it had been.
-    {"name": "well_front", "x": ( 0.93,  1.77), "rings": ("flare",)},
-    {"name": "well_rear",  "x": (-1.77, -0.93), "rings": ("flare",)},
+    {"name": "well_front", "x": ( 1.01,  1.69), "rings": ("flare",)},
+    {"name": "well_rear",  "x": (-1.69, -1.01), "rings": ("flare",)},
     # Lower front intake, and the scoop ahead of the rear arch.
     {"name": "grille",     "x": ( 1.85,  2.00), "rings": ("waist",)},
     {"name": "side_scoop", "x": (-0.90, -0.55), "rings": ("waist",)},
@@ -137,19 +141,23 @@ def creases():
 PROFILE = [
     ( 2.079, 0.58, 0.06, 0.33, 0.30, 0.30, 0.26),   # prow
     ( 1.900, 0.74, 0.45, 0.83, 0.83, 0.78, 0.62),
+    ( 1.684, 0.83, 0.50, 0.85, 0.72, 0.72, 0.60),   # arch front edge = wheel front
     ( 1.700, 0.82, 0.50, 0.85, 0.86, 0.88, 0.70),
     ( 1.500, 0.96, 0.52, 0.87, 0.57, 0.57, 0.50),   # tub narrows, flare stays
     ( 1.351, 0.97, 0.53, 0.88, 0.56, 0.58, 0.50),   # front axle
     ( 1.150, 0.97, 0.53, 0.89, 0.60, 0.67, 0.56),
+    ( 1.018, 0.97, 0.53, 0.87, 0.60, 0.66, 0.56),   # arch rear edge = wheel rear
     ( 0.900, 0.97, 0.54, 0.86, 0.88, 0.85, 0.70),
     ( 0.500, 0.92, 0.55, 0.80, 0.73, 0.79, 0.66),
     ( 0.150, 1.29, 0.42, 0.80, 0.70, 0.81, 0.68),   # screen
     (-0.150, 1.30, 0.44, 0.80, 0.70, 0.82, 0.68),   # canopy crown
     (-0.500, 1.27, 0.46, 0.81, 0.70, 0.83, 0.69),
     (-0.900, 1.14, 0.47, 0.85, 0.85, 0.85, 0.70),
+    (-1.018, 1.09, 0.48, 0.85, 0.66, 0.69, 0.58),   # arch front edge = wheel front
     (-1.150, 1.03, 0.50, 0.84, 0.67, 0.69, 0.58),
     (-1.351, 1.01, 0.52, 0.86, 0.65, 0.66, 0.56),   # rear axle
     (-1.550, 0.96, 0.51, 0.88, 0.69, 0.69, 0.58),
+    (-1.684, 0.90, 0.50, 0.83, 0.74, 0.75, 0.62),   # arch rear edge = wheel rear
     (-1.750, 0.87, 0.50, 0.81, 0.84, 0.81, 0.66),
     (-1.942, 0.80, 0.42, 0.60, 0.73, 0.50, 0.40),   # tail
 ]
@@ -165,7 +173,12 @@ PROFILE = [
 # Heights of the lower rings. The flare rides just under the top surface but
 # never above 0.72, so it stays put through the tall cabin instead of being
 # dragged up with the canopy.
-FLARE_Z_MAX, FLARE_GAP = 0.869, 0.075
+WHEELBASE_HALF = 1.351
+FLARE_Z_MAX = 0.869
+# How far below the top-surface centreline the top edge and the flare sit. The
+# flare must stay under the top edge: lifting it over the wheels without also
+# separating these two pushed it through, at five stations.
+TOP_EDGE_DROP, FLARE_CAP_DROP = 0.015, 0.045
 WAIST_Z, ROCKER_Z, FLOOR_Z = 0.423, 0.187, 0.10
 
 STATIONS = [{"x": x, "top_z": tz, "edge_w": ew, "flare_w": fw,
@@ -183,13 +196,24 @@ def sill_height(x, p):
     return FLOOR_Z
 
 
+def flare_lift(x, reach=0.42, peak=0.055):
+    """The fender crest rises over each wheel. Without this the flare runs dead
+    level through the wheel opening and the arch reads as a square cut-out
+    rather than an arch."""
+    for cx in (WHEELBASE_HALF, -WHEELBASE_HALF):
+        d = abs(x - cx)
+        if d < reach:
+            return peak * math.cos(d / reach * math.pi / 2)
+    return 0.0
+
+
 def station_rings(row, p=None):
     """The (y, z) control points for one station, outboard side."""
     top_z = row["top_z"]
-    flare_z = min(top_z - FLARE_GAP, FLARE_Z_MAX)
+    flare_z = min(top_z - FLARE_CAP_DROP, FLARE_Z_MAX + flare_lift(row["x"]))
     full = {
         "top_centre": (0.0, top_z),
-        "top_edge":   (-row["edge_w"],   top_z - FLARE_GAP * 0.5),
+        "top_edge":   (-row["edge_w"],   top_z - TOP_EDGE_DROP),
         "flare":      (-row["flare_w"],  flare_z),
         "waist":      (-row["waist_w"],  min(WAIST_Z, flare_z - 0.02)),
         "rocker":     (-row["rocker_w"], min(ROCKER_Z, WAIST_Z - 0.02)),
@@ -265,10 +289,56 @@ def build(p=None, ground=True, references=False):
         bpy.ops.mesh.primitive_plane_add(size=length * 1.7, location=(0, 0, 0))
         bpy.context.active_object.name = "ground"
 
+    build_canopy(p)
+
     if references:
         add_references(p)
 
     return body
+
+
+def build_canopy(p=None):
+    """Glass filling the cockpit aperture, as its own object.
+
+    Built from the same top-centre and top-edge rings the aperture removed, so
+    it meets the body exactly along the opening. Separate rather than part of
+    the shell because that is what lets it be glass, and it is the step the
+    build order puts here — the body form settles first, then the glass goes on.
+    """
+    import bmesh
+    p = p or PROPORTIONS
+    lo, hi = next(a["x"] for a in APERTURES if a["name"] == "cockpit")
+    rows = [r for r in STATIONS if lo <= r["x"] <= hi]
+
+    bm = bmesh.new()
+    grid = []
+    for row in rows:
+        rings = station_rings(row, p)
+        centre, edge = rings[0], rings[1]
+        # Lift the crown very slightly so the glass sits proud of the aperture
+        # rim rather than z-fighting with it.
+        grid.append([bm.verts.new((row["x"], 0.0, centre[1] + 0.004)),
+                     bm.verts.new((row["x"], edge[0], edge[1] + 0.002))])
+    for i in range(len(grid) - 1):
+        bm.faces.new((grid[i][0], grid[i][1], grid[i + 1][1], grid[i + 1][0]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+
+    me = bpy.data.meshes.new("glass_canopy")
+    bm.to_mesh(me); bm.free()
+    me.polygons.foreach_set("use_smooth", [True] * len(me.polygons))
+    ob = bpy.data.objects.new("glass_canopy", me)
+    bpy.context.collection.objects.link(ob)
+
+    mirror = ob.modifiers.new("mirror", 'MIRROR')
+    mirror.use_axis = (False, True, False)
+    mirror.use_clip = True
+    sub = ob.modifiers.new("subsurf", 'SUBSURF')
+    sub.levels = p["subdiv_viewport"]
+    sub.render_levels = p["subdiv_render"]
+    # ALL rather than preserve-corners: glass wants its open edges rounded off,
+    # which is how the reference file has its windscreen set.
+    sub.boundary_smooth = 'ALL'
+    return ob
 
 
 def poly_report(body):

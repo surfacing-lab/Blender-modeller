@@ -116,6 +116,16 @@ either side of every hard line, and 0.703 without them — for 2.6x the face
 count. Stations get the same treatment: keep only the ones that change the
 form, and check by measuring rather than by eye.
 
+## The model as it stands
+
+| | |
+|---|---|
+| Cage | 92 faces, 124 verts, Mirror -> Subsurf |
+| Length / wheelbase | 4021 mm / 2702 mm |
+| Roof | 1285 mm — wheelbase/height 2.10 against the hero image's 2.07 |
+| Openings | cockpit, both wheel wells, grille, side scoop |
+| Separate objects | `glass_canopy` filling the cockpit aperture |
+
 ## models/car_blockout.py — PIX3L concept
 
 Mid-engine supercar, body side blocked out. Styling from the supplied
