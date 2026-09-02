@@ -51,6 +51,13 @@ both sides. Modifier order is Mirror then Subsurf, and the mirror needs
 clipping on so the centreline seam welds instead of splitting open under
 subdivision.
 
+**Check station ORDER, not just ring order (2026-09-02).** Inserting stations
+by matching a neighbouring line's text put one on the wrong side of its
+neighbour — 1.684 before 1.700 in a list that must descend — which zigzags the
+loft. check_folds cannot see it: that test looks within a station, never
+between them. It survived two rounds of rendering and measuring unnoticed.
+check_order now catches it. Insert by VALUE, not by text position.
+
 **An aperture cuts straight through a single-shell body (2026-09-02).** The
 wheel wells rendered as bright patches either side of each tyre. Diagnosed as
 inverted normals — 7 of 92 faces genuinely were inverted, since recalc cannot

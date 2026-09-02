@@ -5,7 +5,8 @@
 __pycache__/
 *.pyc
 
-# Reference images extracted from the packed .blend. Not committed: these are
-# Optic output from a Toyota tenant, and the repository's visibility has not
-# been confirmed. Say the word and they go in.
+# Reference images extracted from the packed .blend. NOT committed: checked via
+# the API and this repository is PUBLIC, so committing Optic output from a
+# Toyota tenant would publish it irreversibly. Needs an explicit decision made
+# in knowledge of that, not a default.
 refs/*.png

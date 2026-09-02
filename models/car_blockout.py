@@ -139,10 +139,11 @@ def creases():
 # Modelling it as one width at every height gives a slab with holes cut in it,
 # which is what it was, and no amount of profile or crease tuning rescues that.
 PROFILE = [
-    ( 2.079, 0.58, 0.06, 0.33, 0.30, 0.30, 0.26),   # prow
-    ( 1.900, 0.74, 0.45, 0.83, 0.83, 0.78, 0.62),
-    ( 1.684, 0.83, 0.50, 0.85, 0.72, 0.72, 0.60),   # arch front edge = wheel front
+    ( 2.079, 0.50, 0.05, 0.22, 0.26, 0.34, 0.40),   # prow, splitter widest at the floor
+    ( 2.020, 0.60, 0.20, 0.44, 0.46, 0.52, 0.56),
+    ( 1.900, 0.74, 0.42, 0.78, 0.76, 0.74, 0.66),
     ( 1.700, 0.82, 0.50, 0.85, 0.86, 0.88, 0.70),
+    ( 1.684, 0.83, 0.50, 0.85, 0.72, 0.72, 0.60),   # arch front edge = wheel front
     ( 1.500, 0.96, 0.52, 0.87, 0.57, 0.57, 0.50),   # tub narrows, flare stays
     ( 1.351, 0.97, 0.53, 0.88, 0.56, 0.58, 0.50),   # front axle
     ( 1.150, 0.97, 0.53, 0.89, 0.60, 0.67, 0.56),
@@ -159,7 +160,8 @@ PROFILE = [
     (-1.550, 0.96, 0.51, 0.88, 0.69, 0.69, 0.58),
     (-1.684, 0.90, 0.50, 0.83, 0.74, 0.75, 0.62),   # arch rear edge = wheel rear
     (-1.750, 0.87, 0.50, 0.81, 0.84, 0.81, 0.66),
-    (-1.942, 0.80, 0.42, 0.60, 0.73, 0.50, 0.40),   # tail
+    (-1.880, 0.84, 0.46, 0.74, 0.72, 0.60, 0.48),
+    (-1.942, 0.82, 0.44, 0.66, 0.60, 0.44, 0.34),   # tail, truncated deck
 ]
 
 # Heights scaled up by 1.241 above the floor line. Measured off the hero image:
@@ -220,6 +222,15 @@ def station_rings(row, p=None):
         "floor":      (-row["floor_w"],  FLOOR_Z),
     }
     return [full[name] for name in ACTIVE_RINGS]
+
+
+def check_order():
+    """Stations must run front to back. One out of sequence zigzags the loft,
+    and check_folds cannot see it — that test looks within a station, not
+    between them. A station inserted next to its neighbour by name rather than
+    by value landed on the wrong side and went unnoticed for two rounds."""
+    xs = [r["x"] for r in STATIONS]
+    return [(xs[i], xs[i + 1]) for i in range(len(xs) - 1) if xs[i] <= xs[i + 1]]
 
 
 def check_folds(p=None):
