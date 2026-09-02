@@ -231,7 +231,25 @@ def _wheel(name, x, y, radius, width):
     bpy.context.active_object.name = name
 
 
-def build(p=None, ground=True):
+def add_references(p=None, depth=1.4):
+    """Background reference images, sized to the car. Viewport only — they do
+    not render. Drop the photographs into refs/ beside the .blend.
+
+    `span` is how much of each frame the car fills, which cannot be derived
+    from the model; adjust per image if the framing differs.
+    """
+    from tools import reference_images as ri
+    p = p or PROPORTIONS
+    length = p["wheelbase"] + p["front_overhang"] + p["rear_overhang"]
+    width = p["half_width"] * 2
+    return [ri.add_reference(view, f"//refs/{view}.png", extent, span=span,
+                             depth=depth)
+            for view, extent, span in (("side",  length, 0.92),
+                                       ("front", width,  0.72),
+                                       ("rear",  width,  0.78))]
+
+
+def build(p=None, ground=True, references=False):
     p = p or PROPORTIONS
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.context.scene.unit_settings.system = 'METRIC'
@@ -266,6 +284,9 @@ def build(p=None, ground=True):
         length = p["wheelbase"] + p["front_overhang"] + p["rear_overhang"]
         bpy.ops.mesh.primitive_plane_add(size=length * 1.7, location=(0, 0, 0))
         bpy.context.active_object.name = "ground"
+
+    if references:
+        add_references(p)
 
     return body
 

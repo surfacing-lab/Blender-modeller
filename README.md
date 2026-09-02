@@ -65,6 +65,19 @@ this environment's egress allowlist besides. The loop is therefore:
 3. They paste the generated design back into chat.
 4. Execute it as geometry.
 
+## tools/reference_images.py
+
+Background reference images aligned to the model, created by
+`car_blockout.build(references=True)`. Drop the photographs into `refs/`.
+
+They are viewport-only — image empties never appear in a render — so alignment
+cannot be checked by rendering. `reference_images.report()` prints where each
+image's edges land in world space instead.
+
+Two numbers per image cannot be derived from the model and have to be told:
+`span`, how much of the frame the car fills, and `centre`, where its centre
+sits. Everything else follows from the car's own length and width.
+
 ## tools/inspect_blend.py
 
 Reads a .blend and reports what its meshes are actually made of — face counts
