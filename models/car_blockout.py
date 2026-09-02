@@ -60,12 +60,17 @@ PROPORTIONS = {
 RING = {"top_centre": 0, "top_edge": 1, "shoulder": 2,
         "character": 3, "sill": 4, "lip_inner": 5}
 
+# Tuned against the crease values recovered from Concept_Model_WIP4.blend,
+# which run far harder than first assumed: 45% of edges creased, median 0.99,
+# and two thirds of the creased edges at 0.90 or above. Matching that profile
+# means the outline AND the character line are effectively hard, with only the
+# shoulder and top edge left partial.
 CREASES = {
     RING["lip_inner"]: 1.00,
-    RING["sill"]:      0.85,
-    RING["character"]: 0.55,
-    RING["shoulder"]:  0.50,
-    RING["top_edge"]:  0.30,
+    RING["sill"]:      0.99,
+    RING["character"]: 0.99,
+    RING["shoulder"]:  0.45,
+    RING["top_edge"]:  0.33,
 }
 
 
@@ -78,7 +83,11 @@ CREASES = {
 # the body pinches in through the cabin (0.824) while bulging at both arches
 # (0.90), rather than running at near-constant width.
 PROFILE = [
-    ( 2.083, 0.579, 0.300, 0.700),
+    # Nose tapers to a cap ring AT the measured tip, not past it — adding
+    # stations beyond the extremities stretched the car by 161mm.
+    ( 2.083, 0.512, 0.105, 0.260),   # cap ring, on the tip
+    ( 2.050, 0.548, 0.205, 0.505),
+    ( 2.000, 0.579, 0.300, 0.700),
     ( 1.850, 0.713, 0.430, 0.898),
     ( 1.600, 0.785, 0.470, 0.893),
     ( 1.351, 0.799, 0.490, 0.893),
@@ -91,7 +100,9 @@ PROFILE = [
     (-1.100, 0.849, 0.500, 0.901),
     (-1.351, 0.833, 0.505, 0.899),
     (-1.600, 0.762, 0.490, 0.888),
-    (-1.944, 0.680, 0.410, 0.760),
+    (-1.870, 0.680, 0.410, 0.760),
+    (-1.920, 0.660, 0.330, 0.620),
+    (-1.944, 0.640, 0.165, 0.310),   # cap ring, on the tip
 ]
 
 # Where the remaining lines sit between the top surface and the sill, as a
@@ -155,7 +166,8 @@ def build(p=None, ground=True):
     bpy.context.scene.unit_settings.system = 'METRIC'
 
     me = bpy.data.meshes.new("body_side")
-    bm = vehicle_cage.build_cage(STATIONS, lambda r: station_rings(r, p), CREASES)
+    bm = vehicle_cage.build_cage(STATIONS, lambda r: station_rings(r, p), CREASES,
+                                 cap_ends=True)
     bm.to_mesh(me)
     bm.free()
 

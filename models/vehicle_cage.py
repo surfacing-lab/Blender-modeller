@@ -34,7 +34,7 @@ def check_folds(stations, rings_fn):
     return bad
 
 
-def build_cage(stations, rings_fn, creases):
+def build_cage(stations, rings_fn, creases, cap_ends=False):
     """Loft the stations into an all-quad cage and crease the named lines.
 
     `creases` maps ring index to crease value. The outline — the boundary loop
@@ -49,6 +49,14 @@ def build_cage(stations, rings_fn, creases):
         for r in range(len(grid[0]) - 1):
             bm.faces.new((grid[s][r], grid[s][r + 1],
                           grid[s + 1][r + 1], grid[s + 1][r]))
+
+    if cap_ends:
+        # Close the nose and tail with a single n-gon each. Their own body
+        # carries a 9-gon and a few pentagons, so n-gons in a flat cap are
+        # within house style — and a cap costs far less than the pole a
+        # converging fan would leave at each end.
+        bm.faces.new(grid[0])
+        bm.faces.new(list(reversed(grid[-1])))
 
     crease_layer = bm.edges.layers.float.new("crease_edge")
     for ring, value in creases.items():
