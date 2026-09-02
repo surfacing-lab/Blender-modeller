@@ -34,7 +34,7 @@ def check_folds(stations, rings_fn):
     return bad
 
 
-def build_cage(stations, rings_fn, creases, cap_ends=False):
+def build_cage(stations, rings_fn, creases, cap_ends=False, skip=None):
     """Loft the stations into an all-quad cage and crease the named lines.
 
     `creases` maps ring index to crease value. The outline — the boundary loop
@@ -47,6 +47,12 @@ def build_cage(stations, rings_fn, creases, cap_ends=False):
 
     for s in range(len(grid) - 1):
         for r in range(len(grid[0]) - 1):
+            # `skip` leaves a hole rather than a surface — the cockpit
+            # aperture. The reference body is an open shell, not a closed
+            # volume: its character comes from the openings, and no amount of
+            # profile tuning makes a closed lozenge read the same way.
+            if skip and skip(stations[s]["x"], stations[s + 1]["x"], r):
+                continue
             bm.faces.new((grid[s][r], grid[s][r + 1],
                           grid[s + 1][r + 1], grid[s + 1][r]))
 
@@ -64,6 +70,10 @@ def build_cage(stations, rings_fn, creases, cap_ends=False):
             edge = bm.edges.get((grid[s][ring], grid[s + 1][ring]))
             if edge is not None:
                 edge[crease_layer] = value
+
+    loose = [v for v in bm.verts if not v.link_faces]
+    if loose:
+        bmesh.ops.delete(bm, geom=loose, context='VERTS')
 
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     return bm

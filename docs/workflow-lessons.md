@@ -1,0 +1,149 @@
+# Workflow lessons — mirrored from the blender-car-modeler skill
+
+The live copy lives in the skill's `references/workflow-lessons.md`, inside the
+session container, which is reclaimed when the session ends. This mirror is the
+durable one. Copy it back into the skill at the start of a session, and mirror
+any new lessons back here before the session ends.
+
+---
+
+# This user's workflow, conventions, and lessons learned
+
+This file is the memory of everything learned working with this specific user in Blender. It starts mostly empty — that's expected on day one. The point isn't to fill it out in one sitting; it's to add one line whenever a real correction or preference actually comes up, so the next session doesn't repeat the same mistake or ask the same question twice.
+
+**How to add to this file:** when the user corrects an approach, states a convention, or flags something as a repeated mistake, add a short, concrete line to the right section below — their words or a close paraphrase, not a long writeup. If a section starts getting cluttered with near-duplicate entries, consolidate them into one clearer line instead of letting it sprawl.
+
+## Modeling conventions
+
+**Build order (stated 2026-09-01, their core method):**
+1. Body side first — the side profile/panel is the starting surface, not the hood or arches.
+2. Wheels in early as simple cylinders, purely to judge proportion and stance.
+3. Front, then back — modelled to meet the already-established side.
+4. Once the form is good: duplicate the body and shrinkwrap it to make the
+   windscreen. This is deliberate — glass that derives from the body surface
+   gives a correct reflection sweep and preserves the intended overall form,
+   rather than a separately-modelled screen that fights the body line.
+5. As the design matures, add wheel detail and lamp data.
+6. Basic interior, blocked in early so it can be iterated on later.
+
+Expect several iterations — the form is refined in loops, not in one pass.
+
+**Fewest possible edges — stated as general for ALL basic vehicles
+(2026-09-01).** Crease the OUTLINE — wheel-arch lip, sill, the design lines —
+and leave the surface between those outlines smooth and empty. Definition comes
+from creasing, never from adding loops. The reason is editability: the fewer
+points there are, the easier the form is to push around, and a form goes
+through many iterations.
+
+Corrected in the same session after getting this backwards: the stacked
+parallel loops visible along the sill of their cage were read as support loops,
+and support loops were added throughout. Measured afterwards, they bought
+nothing — arch crown 0.702 with them, 0.703 without, for 2.6x the faces. Do not
+add a loop to firm up an edge. Raise its crease.
+
+Also delete stations that do not change the form, but measure before removing:
+three came out of the PIX3L side with length, height and arch clearance
+identical to the millimetre, while one that looked equally redundant was
+carrying the canopy crown and cost 38mm of height when dropped.
+
+**Low poly + Subdivision Surface + Mirror is the default, always.** Build a
+light all-quad control cage and let Subsurf do the smoothing — do not model
+dense geometry directly. Mirror across the centreline rather than modelling
+both sides. Modifier order is Mirror then Subsurf, and the mirror needs
+clipping on so the centreline seam welds instead of splitting open under
+subdivision.
+
+**Their `body` object is an OPEN hard-surface shell, not a closed volume
+(2026-09-02).** Rendered on its own it has huge see-through wheel-arch cutouts,
+a thin blade sill, no roof — the canopy is separate `Glass` and
+`FR_WINDSCREEN` objects — and hard creased facets throughout. Building the body
+as a closed smooth lozenge and expecting it to read like the reference is
+hopeless: the character comes from the openings and the panel edges. Model the
+body with the cockpit open and the arches cut large, then add glass separately.
+
+**Their crease values, recovered from the raw .blend (2026-09-02):** 45% of
+edges creased, median 0.99, and 67% of creased edges at 0.90 or above, with a
+long soft tail from 0.09 to 0.6. They crease FAR harder than first assumed —
+the outline and the character line are effectively hard at 0.99/1.0, and only
+secondary lines get partial values. Earlier defaults of 0.85/0.55/0.50 were far
+too soft.
+
+Recovering them needed the raw file: their Blender is newer, so bpy loads the
+mesh with the crease attribute present but holding zero values, and the mesh
+will not even allocate a replacement layer. The route that worked was
+decompressing the .blend (zstd, multi-frame — needs read_across_frames) and
+reading the float array after the "crease_edge" string, verified by its length
+matching the edge count exactly. Rebuilding the mesh with from_pydata and
+mapping creases by vertex-pair sidesteps the unallocatable layer.
+
+**Measured off Concept_Model_WIP4.blend (2026-09-01) — their actual practice:**
+- Canopy crowns at the MIDDLE of the wheelbase, not forward of it. Do not
+  assume cab-forward on a mid-engine silhouette.
+- Body pinches in through the cabin and bulges at both arches (0.824 against
+  0.90 half-width), rather than running near-constant width.
+- Wheel outer face sits flush with the widest point of the body.
+- Their cage is NOT strictly all-quads: 177 faces carrying 2 triangles, 3
+  pentagons and one 9-gon. All-quad is a preference, not a rule to enforce.
+- Mirror clipping is OFF, with merge threshold 0.01. Subsurf runs 5/5.
+- Windscreen is a separate 18-face patch: Mirror, then Subsurf 5/5 with
+  boundary smoothing ALL (not preserve-corners), then Shrinkwrap onto `body`
+  using NEAREST_SURFACEPOINT / ON_SURFACE with a 1mm offset. This is the
+  "copy the body and shrinkwrap" step they described on day one.
+- Their working envelope is 4026mm long on a 2702mm wheelbase with 732/593
+  overhangs and a 1072mm roof — NOT the 4519mm Porsche envelope named earlier.
+  Ask which governs when the two conflict.
+
+## Recurring mistakes to avoid
+
+- Do not build body panels as triangulated n-gons or extruded flat profiles.
+  Corrected 2026-09-01: the first blockout attempt filled a closed outline and
+  triangulated it, which is unusable under Subsurf. Build a quad cage instead.
+- **Never model without reference.** Corrected 2026-09-01, and this was the
+  worst error of the session: three commits of confident geometry were built on
+  invented proportions (2650mm wheelbase against a real 911's 2450mm). Stating
+  "here are my assumed proportions" is NOT a substitute for reference. Ask for
+  reference images, or pull real published dimensions, before the first vertex.
+- Sample reference geometry in a WHEELBASE-CENTRED frame. Their file's origin
+  is not at the wheelbase centre (axles at -1.471/+1.231, midpoint -0.120), so
+  sampling against assumed axle positions shifted an entire profile 120mm along
+  the car relative to its own wheels.
+- Author ring heights as fractions of the span between the top surface and the
+  sill, never as fixed absolute heights. Fixed heights fold the cage wherever
+  the sill lifts into an arch — it happened twice, and both times check_folds
+  caught what the render did not.
+- Do not react to a render before checking the numbers. Twice on day one a
+  render was misread as a geometry bug when the geometry measured correct
+  (unlit cavities reading as holes, a cropped frame reading as a rotation).
+  Measure, then judge.
+
+## Preferences & workflow
+
+- Works in iterative loops and expects refinement passes, not one-shot results.
+- **Udin Optic is a generative design tool that ships as a Blender ADDON**,
+  backed by a subscription (udinbv.com / optic.udinbv.com). It is not an API
+  and never will be something Claude calls: it runs in a Blender GUI, on their
+  machine, under their subscription, and their tenant
+  (toyota-au.udinbv.com/optic/) sits behind Toyota SSO. The domain is also
+  blocked by this environment's egress allowlist. Do not ask again how to
+  "reach Udin" — the answer is that only they can run it.
+  The working loop: Claude builds and renders the blockout, they run the render
+  through Optic, they paste the generated design back into chat, Claude
+  executes it as geometry. tools/preview.py already emits clay views suitable
+  as Optic input.
+- End goal is animation via Higgsfield, so models should be built ready to hand
+  off for animation.
+- Sends reference as images pasted into chat — this works well and is the main
+  reference channel. Claude cannot fetch images from the web (egress blocked,
+  WebFetch is text-only), but CAN look up published dimensions via search.
+- Their Blender is NEWER than the bpy in this container (502.44 vs 5.0.1), so
+  their files open with "expect loss of data" and edge crease values arrive
+  empty — the attribute exists but holds 0 values against 412 edges. Topology,
+  proportions, modifiers and shrinkwrap settings all read fine. Ask them to run
+  tools/dump_creases.py and paste the output when crease values matter.
+- Anchors original designs to a real car's dimensions ("make this with roughly
+  the Porsche dimensions") — take the envelope from the real car, the styling
+  from the reference.
+
+## Concept-mode notes
+
+*(Specific psychedelic/sci-fi/sacred-geometry choices this user tends to favor once they're established — particular color combinations, motifs they gravitate to or avoid, past concept pieces worth remembering the direction of.)*

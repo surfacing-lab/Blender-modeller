@@ -40,8 +40,8 @@ PROPORTIONS = {
     "track_half_rear":  0.797,
 
     "sill":             0.091,
-    "arch_front":       (0.500, 0.629),  # half-width along X, height above sill
-    "arch_rear":        (0.500, 0.629),
+    "arch_front":       (0.560, 0.640),  # half-width along X, height above sill
+    "arch_rear":        (0.560, 0.640),
 
     # The fender turning inboard into the wheel well, so the arch has thickness
     # rather than ending on a bare edge.
@@ -65,6 +65,18 @@ RING = {"top_centre": 0, "top_edge": 1, "shoulder": 2,
 # and two thirds of the creased edges at 0.90 or above. Matching that profile
 # means the outline AND the character line are effectively hard, with only the
 # shoulder and top edge left partial.
+# The cockpit aperture: the band between the centreline and the top-surface
+# edge is left open through the cabin, so the canopy can be separate glass —
+# which is also the order the body is built in, glass shrinkwrapped on after
+# the body form settles.
+COCKPIT = (-0.90, 0.30)
+
+
+def _skip(x0, x1, ring):
+    lo, hi = COCKPIT
+    return ring == 0 and lo <= x0 <= hi and lo <= x1 <= hi
+
+
 CREASES = {
     RING["lip_inner"]: 1.00,
     RING["sill"]:      0.99,
@@ -192,7 +204,7 @@ def build(p=None, ground=True):
 
     me = bpy.data.meshes.new("body_side")
     bm = vehicle_cage.build_cage(STATIONS, lambda r: station_rings(r, p), CREASES,
-                                 cap_ends=True)
+                                 cap_ends=True, skip=_skip)
     bm.to_mesh(me)
     bm.free()
 
