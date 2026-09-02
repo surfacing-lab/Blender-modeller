@@ -21,6 +21,7 @@ Per-vehicle numbers live with the vehicle. Nothing here knows what car it is.
 """
 
 import bmesh
+from mathutils import Vector
 
 
 def check_folds(stations, rings_fn):
@@ -76,4 +77,20 @@ def build_cage(stations, rings_fn, creases, cap_ends=False, skip=None):
         bmesh.ops.delete(bm, geom=loose, context='VERTS')
 
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+
+    # recalc cannot orient a shell reliably once it has apertures in it — with
+    # no enclosed volume to reason about, isolated patches come out inverted.
+    # Seven of ninety-two faces did, which rendered as bright inside-out
+    # patches in the wheel wells. The body is roughly star-shaped about its
+    # own centroid, so anything pointing back at it is wrong.
+    centre = Vector()
+    for v in bm.verts:
+        centre += v.co
+    centre /= max(len(bm.verts), 1)
+    flipped = [f for f in bm.faces
+               if (f.calc_center_median() - centre).length > 1e-6
+               and (f.calc_center_median() - centre).normalized().dot(f.normal) < -0.35]
+    if flipped:
+        bmesh.ops.reverse_faces(bm, faces=flipped)
+
     return bm

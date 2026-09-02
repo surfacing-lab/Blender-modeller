@@ -51,6 +51,19 @@ both sides. Modifier order is Mirror then Subsurf, and the mirror needs
 clipping on so the centreline seam welds instead of splitting open under
 subdivision.
 
+**An aperture cuts straight through a single-shell body (2026-09-02).** The
+wheel wells rendered as bright patches either side of each tyre. Diagnosed as
+inverted normals — 7 of 92 faces genuinely were inverted, since recalc cannot
+orient a shell that has holes in it, so that fix was worth keeping — but it was
+not the cause. Then diagnosed as the ground plane showing through; rendering
+without it disproved that too. The actual cause: the car had no wheel housing,
+so the opening passed clean through and showed world background. Cut an
+aperture, then close it with a liner.
+
+Two wrong diagnoses before the right one. Both were plausible and both were
+disproved by a cheap targeted render. When a visual fault survives the fix,
+that is evidence the diagnosis was wrong, not that the fix needs to be bigger.
+
 **Measure the hero image, do not just look at it (2026-09-02).** With the
 references packed into the .blend they can be extracted and measured from
 pixels. The ratio that mattered: WHEELBASE DIVIDED BY ROOF HEIGHT is 2.07 in

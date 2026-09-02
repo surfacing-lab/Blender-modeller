@@ -229,10 +229,12 @@ def check_folds(p=None):
 
 
 def _wheel(name, x, y, radius, width):
-    bpy.ops.mesh.primitive_cylinder_add(
-        vertices=24, radius=radius, depth=width,
-        location=(x, y, radius), rotation=(math.pi / 2, 0, 0))
-    bpy.context.active_object.name = name
+    from . import wheel as wheel_mod
+    ob = wheel_mod.build(name)
+    wheel_mod.materials(ob)
+    # Mirror the right-hand pair so the spokes dish outward on both sides
+    # rather than facing the same way across the car.
+    wheel_mod.place(ob, x, y, radius, mirror_y=(y > 0))
 
 
 def add_references(p=None, depth=1.4):
@@ -290,6 +292,7 @@ def build(p=None, ground=True, references=False):
         bpy.context.active_object.name = "ground"
 
     build_canopy(p)
+    build_wheel_arches(p)
 
     if references:
         add_references(p)
@@ -339,6 +342,53 @@ def build_canopy(p=None):
     # which is how the reference file has its windscreen set.
     sub.boundary_smooth = 'ALL'
     return ob
+
+
+def build_wheel_arches(p=None):
+    """Inner arch liners closing the wheel wells.
+
+    Without these the wells are holes straight through the body — the render
+    shows world background either side of each tyre, which reads as bright
+    patches and was misdiagnosed twice, first as inverted normals and then as
+    the ground plane. Neither: the car simply had no wheel housing.
+
+    Each liner sweeps from the flare's outer edge inboard and down to the tub,
+    which is what a wheel arch is.
+    """
+    import bmesh
+    p = p or PROPORTIONS
+    made = []
+    for ap in APERTURES:
+        if not ap["name"].startswith("well"):
+            continue
+        lo, hi = ap["x"]
+        rows = [r for r in STATIONS if lo <= r["x"] <= hi]
+        if len(rows) < 2:
+            continue
+        bm = bmesh.new()
+        grid = []
+        for row in rows:
+            rings = dict(zip(ACTIVE_RINGS, station_rings(row, p)))
+            fy, fz = rings["flare"]
+            wy, _ = rings["waist"]
+            grid.append([bm.verts.new((row["x"], fy, fz)),
+                         bm.verts.new((row["x"], wy * 0.92, fz - 0.055))])
+        for i in range(len(grid) - 1):
+            bm.faces.new((grid[i][0], grid[i][1], grid[i + 1][1], grid[i + 1][0]))
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+
+        me = bpy.data.meshes.new(f"arch_{ap['name']}")
+        bm.to_mesh(me); bm.free()
+        me.polygons.foreach_set("use_smooth", [True] * len(me.polygons))
+        ob = bpy.data.objects.new(f"arch_{ap['name']}", me)
+        bpy.context.collection.objects.link(ob)
+        m = ob.modifiers.new("mirror", 'MIRROR')
+        m.use_axis = (False, True, False)
+        sub = ob.modifiers.new("subsurf", 'SUBSURF')
+        sub.levels, sub.render_levels = p["subdiv_viewport"], p["subdiv_render"]
+        sub.boundary_smooth = 'PRESERVE_CORNERS'
+        made.append(ob)
+    return made
 
 
 def poly_report(body):
