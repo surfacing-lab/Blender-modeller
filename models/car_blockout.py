@@ -74,61 +74,86 @@ CREASES = {
 }
 
 
-# Body profile measured off Concept_Model_WIP4.blend, not invented:
-# x, top-surface height at the centreline, half-width of the top-surface edge,
-# and half-width at the widest point. Axles sit at +/-1.351.
+# Body profile sampled off Concept_Model_WIP4.blend:
+#   x, top-surface height at the centreline, half-width of the top-surface
+#   edge, half-width at the widest point, and the bottom edge.
 #
-# Two things here were assumptions of mine that the file corrected. The canopy
-# crowns at x = 0.00, the exact middle of the wheelbase, not forward of it. And
-# the body pinches in through the cabin (0.824) while bulging at both arches
-# (0.90), rather than running at near-constant width.
+# Sampled in a wheelbase-CENTRED frame. Their file's origin is not at the
+# wheelbase centre — the axles sit at -1.471 and +1.231, midpoint -0.120 — so
+# an earlier pass that sampled against +/-1.351 had the whole profile shifted
+# 120mm along the car relative to its own wheels.
+#
+# Three features the measurements forced, all of which had been modelled wrong:
+#   - the nose tapers to a narrow low prow (0.339 half-width, 0.059 at the top
+#     edge), not the blunt round bulb it had become;
+#   - the canopy is a separate narrow structure standing on a wide body. It
+#     rises 290mm across the 100mm between x=0.35 and x=0.25 while the top edge
+#     pinches from 0.775 to 0.394. Both stations are needed or it ramps;
+#   - the tail bottom lifts to 0.460 for the diffuser cutaway, rather than
+#     running to the sill.
 PROFILE = [
-    # Nose tapers to a cap ring AT the measured tip, not past it — adding
-    # stations beyond the extremities stretched the car by 161mm.
-    ( 2.083, 0.512, 0.105, 0.260),   # cap ring, on the tip
-    ( 2.050, 0.548, 0.205, 0.505),
-    ( 2.000, 0.579, 0.300, 0.700),
-    ( 1.850, 0.713, 0.430, 0.898),
-    ( 1.600, 0.785, 0.470, 0.893),
-    ( 1.351, 0.799, 0.490, 0.893),
-    ( 1.100, 0.800, 0.495, 0.894),
-    ( 0.850, 0.786, 0.480, 0.855),
-    ( 0.400, 1.051, 0.410, 0.825),
-    ( 0.000, 1.063, 0.420, 0.824),
-    (-0.400, 1.042, 0.430, 0.841),
-    (-0.850, 0.920, 0.470, 0.896),
-    (-1.100, 0.849, 0.500, 0.901),
-    (-1.351, 0.833, 0.505, 0.899),
-    (-1.600, 0.762, 0.490, 0.888),
-    (-1.870, 0.680, 0.410, 0.760),
-    (-1.920, 0.660, 0.330, 0.620),
-    (-1.944, 0.640, 0.165, 0.310),   # cap ring, on the tip
+    ( 2.079, 0.490, 0.059, 0.339, 0.120),   # prow, capped
+    ( 2.040, 0.516, 0.370, 0.410, 0.114),
+    ( 1.980, 0.549, 0.479, 0.511, 0.105),
+    ( 1.850, 0.622, 0.720, 0.898, 0.091),
+    ( 1.600, 0.755, 0.817, 0.893, 0.091),
+    ( 1.351, 0.791, 0.828, 0.893, 0.091),   # front axle
+    ( 1.100, 0.800, 0.797, 0.894, 0.091),
+    ( 0.850, 0.791, 0.782, 0.870, 0.095),
+    ( 0.350, 0.759, 0.775, 0.826, 0.095),   # cowl, base of the screen
+    ( 0.250, 1.049, 0.394, 0.824, 0.095),   # top of the screen
+    ( 0.000, 1.063, 0.494, 0.818, 0.095),   # canopy crown, mid-wheelbase
+    (-0.400, 1.052, 0.509, 0.834, 0.095),
+    (-0.850, 0.970, 0.449, 0.875, 0.095),
+    (-1.100, 0.870, 0.739, 0.900, 0.091),
+    (-1.351, 0.844, 0.766, 0.900, 0.091),   # rear axle
+    (-1.600, 0.793, 0.746, 0.893, 0.131),
+    (-1.800, 0.707, 0.715, 0.835, 0.184),
+    (-1.942, 0.658, 0.649, 0.712, 0.460),   # tail, capped, diffuser cutaway
 ]
 
 # Where the remaining lines sit between the top surface and the sill, as a
 # fraction of the height available at that station. Fractions rather than
 # absolute heights, so the lines stay clear of the arch automatically wherever
 # the sill lifts — which is what folded the cage when the heights were fixed.
-SHOULDER_F, CHARACTER_F, TOP_EDGE_F = 0.58, 0.30, 0.06
-SHOULDER_W, SILL_W = 0.985, 0.930
+SHOULDER_F, CHARACTER_F = 0.58, 0.30
+TOP_EDGE_F, SHOULDER_W, SILL_W = 0.06, 0.985, 0.930
 
-STATIONS = [{"x": x, "top_z": tz, "edge_w": ew, "wide_w": ww}
-            for x, tz, ew, ww in PROFILE]
+STATIONS = [{"x": x, "top_z": tz, "edge_w": ew, "wide_w": ww, "bottom_z": bz}
+            for x, tz, ew, ww, bz in PROFILE]
 
 
 def _axles(p):
     return p["wheelbase"] / 2, -p["wheelbase"] / 2
 
 
+def _bottom_at(x):
+    """Measured bottom edge, interpolated between stations. Carries the tail's
+    diffuser cutaway, which a flat sill line cannot."""
+    xs = [row[0] for row in PROFILE]
+    if x >= xs[0]:
+        return PROFILE[0][4]
+    if x <= xs[-1]:
+        return PROFILE[-1][4]
+    for i in range(len(xs) - 1):
+        if xs[i] >= x >= xs[i + 1]:
+            t = (xs[i] - x) / (xs[i] - xs[i + 1])
+            return PROFILE[i][4] + t * (PROFILE[i + 1][4] - PROFILE[i][4])
+    return PROFILE[-1][4]
+
+
 def sill_height(x, p):
-    """Bottom edge of the body side, lifting into an elliptical opening over
-    each axle. Elliptical so the arch meets the sill exactly, with no step."""
+    """Bottom edge of the body side: the measured bottom line, lifted into an
+    elliptical opening over each axle. Elliptical so the arch meets the sill
+    exactly, with no step. Whichever is higher wins, so the arch survives at
+    the axles and the diffuser cutaway survives at the tail."""
+    base = _bottom_at(x)
     fx, rx = _axles(p)
     for cx, (w, h) in ((fx, p["arch_front"]), (rx, p["arch_rear"])):
         dx = x - cx
         if abs(dx) < w:
-            return p["sill"] + h * math.sqrt(1.0 - (dx / w) ** 2)
-    return p["sill"]
+            return max(base, p["sill"] + h * math.sqrt(1.0 - (dx / w) ** 2))
+    return base
 
 
 def station_rings(row, p=None):
