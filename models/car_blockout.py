@@ -57,33 +57,66 @@ PROPORTIONS = {
 # creased character line reads as damage rather than as a design line. Nothing
 # else is creased, and nothing else exists: between the outlines the surface is
 # a single smooth span.
-RING = {"top_centre": 0, "top_edge": 1, "shoulder": 2,
-        "character": 3, "sill": 4, "lip_inner": 5}
+# Rings down the side, outboard from the centreline. ACTIVE_RINGS is what
+# actually gets built — a ring can be dropped from it and the creases still
+# resolve, because they are keyed by name rather than by index.
+# "shoulder" is deliberately absent. Once the apertures were cut it measured as
+# costing 1mm of width for 17 faces and 18 vertices, and rendering with and
+# without confirmed the surface reads the same — better, in fact, since it sat
+# only 1.5% inboard of the character line and the two were fighting. Envelope
+# measurements alone would not have settled it: they cannot see a design line
+# disappear, so the renders were compared before it went.
+RING_ORDER = ["top_centre", "top_edge", "shoulder", "character", "sill", "lip_inner"]
+ACTIVE_RINGS = ["top_centre", "top_edge", "character", "sill", "lip_inner"]
 
 # Tuned against the crease values recovered from Concept_Model_WIP4.blend,
 # which run far harder than first assumed: 45% of edges creased, median 0.99,
 # and two thirds of the creased edges at 0.90 or above. Matching that profile
 # means the outline AND the character line are effectively hard, with only the
 # shoulder and top edge left partial.
-# The cockpit aperture: the band between the centreline and the top-surface
-# edge is left open through the cabin, so the canopy can be separate glass —
-# which is also the order the body is built in, glass shrinkwrapped on after
-# the body form settles.
-COCKPIT = (-0.90, 0.30)
+# Apertures cut out of the shell. `rings` names the band(s) of faces to leave
+# unbuilt, indexed by the ring below them: 0 spans centreline to top edge,
+# 1 top edge to shoulder, 2 shoulder to character, 3 character to sill,
+# 4 sill to the wheel-well lip.
+#
+# Cutting these REDUCES the cage. Stations and rings that existed only to
+# shape a region which is now a hole stop earning their place, so the count
+# should fall as the openings go in, not climb.
+APERTURES = [
+    # Canopy opening, so the glass can be a separate shrinkwrapped patch.
+    {"name": "cockpit",     "x": (-0.90,  0.30), "rings": ("top_centre",)},
+    # Lower front intake.
+    {"name": "grille",      "x": ( 1.97,  2.05), "rings": ("character",)},
+    # Scoop ahead of the rear arch.
+    {"name": "side_intake", "x": (-1.11, -0.84), "rings": ("character",)},
+]
 
 
 def _skip(x0, x1, ring):
-    lo, hi = COCKPIT
-    return ring == 0 and lo <= x0 <= hi and lo <= x1 <= hi
+    """`ring` indexes the band of faces above ring index `ring`. Apertures name
+    the ring BELOW their band by name, so they survive ring pruning."""
+    for ap in APERTURES:
+        lo, hi = ap["x"]
+        if not (lo <= x0 <= hi and lo <= x1 <= hi):
+            continue
+        for name in ap["rings"]:
+            if name in ACTIVE_RINGS and ACTIVE_RINGS.index(name) == ring:
+                return True
+    return False
 
 
-CREASES = {
-    RING["lip_inner"]: 1.00,
-    RING["sill"]:      0.99,
-    RING["character"]: 0.99,
-    RING["shoulder"]:  0.45,
-    RING["top_edge"]:  0.33,
+CREASE_BY_NAME = {
+    "lip_inner": 1.00,
+    "sill":      0.99,
+    "character": 0.99,
+    "shoulder":  0.45,
+    "top_edge":  0.33,
 }
+
+
+def creases():
+    return {ACTIVE_RINGS.index(n): v for n, v in CREASE_BY_NAME.items()
+            if n in ACTIVE_RINGS}
 
 
 # Body profile sampled off Concept_Model_WIP4.blend:
@@ -110,12 +143,12 @@ PROFILE = [
     ( 1.850, 0.622, 0.720, 0.898, 0.091),
     ( 1.600, 0.755, 0.817, 0.893, 0.091),
     ( 1.351, 0.791, 0.828, 0.893, 0.091),   # front axle
+    # Stations at x = 0.850 and -0.400 removed: both sat on smooth runs and
+    # cost nothing measurable once tested one at a time.
     ( 1.100, 0.800, 0.797, 0.894, 0.091),
-    ( 0.850, 0.791, 0.782, 0.870, 0.095),
     ( 0.350, 0.759, 0.775, 0.826, 0.095),   # cowl, base of the screen
     ( 0.250, 1.049, 0.394, 0.824, 0.095),   # top of the screen
     ( 0.000, 1.063, 0.494, 0.818, 0.095),   # canopy crown, mid-wheelbase
-    (-0.400, 1.052, 0.509, 0.834, 0.095),
     (-0.850, 0.970, 0.449, 0.875, 0.095),
     (-1.100, 0.870, 0.739, 0.900, 0.091),
     (-1.351, 0.844, 0.766, 0.900, 0.091),   # rear axle
@@ -174,14 +207,15 @@ def station_rings(row, p=None):
     sill_z = sill_height(row["x"], p)
     top_z, wide = row["top_z"], row["wide_w"]
     span = max(top_z - sill_z, 1e-4)
-    return [
-        (0.0, top_z),
-        (-row["edge_w"],       top_z - span * TOP_EDGE_F),
-        (-wide * SHOULDER_W,   sill_z + span * SHOULDER_F),
-        (-wide,                sill_z + span * CHARACTER_F),
-        (-wide * SILL_W,       sill_z),
-        (-(wide * SILL_W - p["lip_inboard"]), sill_z + p["lip_rise"]),
-    ]
+    full = {
+        "top_centre": (0.0, top_z),
+        "top_edge":   (-row["edge_w"],     top_z - span * TOP_EDGE_F),
+        "shoulder":   (-wide * SHOULDER_W, sill_z + span * SHOULDER_F),
+        "character":  (-wide,              sill_z + span * CHARACTER_F),
+        "sill":       (-wide * SILL_W,     sill_z),
+        "lip_inner":  (-(wide * SILL_W - p["lip_inboard"]), sill_z + p["lip_rise"]),
+    }
+    return [full[name] for name in ACTIVE_RINGS]
 
 
 def check_folds(p=None):
@@ -203,7 +237,7 @@ def build(p=None, ground=True):
     bpy.context.scene.unit_settings.system = 'METRIC'
 
     me = bpy.data.meshes.new("body_side")
-    bm = vehicle_cage.build_cage(STATIONS, lambda r: station_rings(r, p), CREASES,
+    bm = vehicle_cage.build_cage(STATIONS, lambda r: station_rings(r, p), creases(),
                                  cap_ends=True, skip=_skip)
     bm.to_mesh(me)
     bm.free()

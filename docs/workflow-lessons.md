@@ -53,6 +53,17 @@ both sides. Modifier order is Mirror then Subsurf, and the mirror needs
 clipping on so the centreline seam welds instead of splitting open under
 subdivision.
 
+**Cutting the openings SHRINKS the cage (2026-09-02, their point).** Once the
+glass aperture, grille and side intake are cut, rings and stations that existed
+only to shape those regions stop earning their place. Prune after cutting, not
+before: 87 faces / 108 verts went to 58 / 79 with the envelope unchanged.
+
+Prune by measuring one removal at a time — but envelope numbers alone cannot
+settle it, because they are blind to a design line vanishing. The "shoulder"
+ring measured as costing 1mm of width; it was only dropped after rendering with
+and without and confirming the surface read the same. It sat 1.5% inboard of
+the character line and the two were fighting each other.
+
 **Their `body` object is an OPEN hard-surface shell, not a closed volume
 (2026-09-02).** Rendered on its own it has huge see-through wheel-arch cutouts,
 a thin blade sill, no roof — the canopy is separate `Glass` and
