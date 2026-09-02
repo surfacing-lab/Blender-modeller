@@ -53,6 +53,18 @@ preview.contact_sheet("model")                          # front + side + 3/4
 `angle` accepts `front`, `side`, `top`, `three_quarter`, or an
 `(azimuth, elevation)` pair in degrees.
 
+## The design loop
+
+Udin Optic is the design director. It is a Blender addon on a subscription, so
+it runs on their machine, not here — and its Toyota tenant is behind SSO and
+this environment's egress allowlist besides. The loop is therefore:
+
+1. Build and render the blockout here; `tools/preview.py` emits the clay views
+   Optic takes as input.
+2. They run it through Optic in their Blender.
+3. They paste the generated design back into chat.
+4. Execute it as geometry.
+
 ## tools/inspect_blend.py
 
 Reads a .blend and reports what its meshes are actually made of — face counts
