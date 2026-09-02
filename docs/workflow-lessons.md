@@ -1,8 +1,7 @@
 # Workflow lessons — mirrored from the blender-car-modeler skill
 
-The live copy lives in the skill's `references/workflow-lessons.md`, inside the
-session container, which is reclaimed when the session ends. This mirror is the
-durable one.
+Live copy is in the skill inside the session container, which is reclaimed
+when the session ends. This mirror is the durable one.
 
 ---
 
@@ -51,6 +50,23 @@ dense geometry directly. Mirror across the centreline rather than modelling
 both sides. Modifier order is Mirror then Subsurf, and the mirror needs
 clipping on so the centreline seam welds instead of splitting open under
 subdivision.
+
+**Measure the hero image, do not just look at it (2026-09-02).** With the
+references packed into the .blend they can be extracted and measured from
+pixels. The ratio that mattered: WHEELBASE DIVIDED BY ROOF HEIGHT is 2.07 in
+the hero image against 2.57 as modelled, which put the roof at 1051mm where the
+reference implies 1304mm. That one number was most of the difference in feel —
+a flat wedge instead of a tall muscular form.
+
+Pick ratios whose endpoints are fully in frame. Overall length was NOT usable:
+the image is cropped hard at the rear, so an aspect ratio of 2.95 measured from
+it is meaningless, and a tyre-diameter check failed too because the dark body
+above the wheel merges with the tyre. Two of three measurements had to be
+thrown away — check what is actually in frame before trusting any of them.
+
+To extract packed images: img.filepath_raw = path; img.file_format='PNG';
+img.save(). Pixels come out via img.pixels.foreach_get into a numpy array,
+which arrives bottom-up so needs flipping.
 
 **THE section architecture (2026-09-02) — the single biggest thing missed.**
 The reference is a NARROW CENTRAL TUB with WIDE FENDER FLARES bursting out at

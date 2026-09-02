@@ -4,3 +4,8 @@
 
 __pycache__/
 *.pyc
+
+# Reference images extracted from the packed .blend. Not committed: these are
+# Optic output from a Toyota tenant, and the repository's visibility has not
+# been confirmed. Say the word and they go in.
+refs/*.png

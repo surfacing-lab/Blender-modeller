@@ -135,30 +135,38 @@ def creases():
 # Modelling it as one width at every height gives a slab with holes cut in it,
 # which is what it was, and no amount of profile or crease tuning rescues that.
 PROFILE = [
-    ( 2.079, 0.49, 0.06, 0.33, 0.30, 0.30, 0.26),   # prow
-    ( 1.900, 0.62, 0.45, 0.83, 0.83, 0.78, 0.62),
-    ( 1.700, 0.68, 0.50, 0.85, 0.86, 0.88, 0.70),
-    ( 1.500, 0.79, 0.52, 0.87, 0.57, 0.57, 0.50),   # tub narrows, flare stays
-    ( 1.351, 0.80, 0.53, 0.88, 0.56, 0.58, 0.50),   # front axle
-    ( 1.150, 0.80, 0.53, 0.89, 0.60, 0.67, 0.56),
-    ( 0.900, 0.80, 0.54, 0.86, 0.88, 0.85, 0.70),
-    ( 0.500, 0.76, 0.55, 0.80, 0.73, 0.79, 0.66),
-    ( 0.150, 1.06, 0.42, 0.80, 0.70, 0.81, 0.68),   # screen
-    (-0.150, 1.07, 0.44, 0.80, 0.70, 0.82, 0.68),   # canopy crown
-    (-0.500, 1.04, 0.46, 0.81, 0.70, 0.83, 0.69),
-    (-0.900, 0.94, 0.47, 0.85, 0.85, 0.85, 0.70),
-    (-1.150, 0.85, 0.50, 0.84, 0.67, 0.69, 0.58),
-    (-1.351, 0.83, 0.52, 0.86, 0.65, 0.66, 0.56),   # rear axle
-    (-1.550, 0.79, 0.51, 0.88, 0.69, 0.69, 0.58),
-    (-1.750, 0.72, 0.50, 0.81, 0.84, 0.81, 0.66),
-    (-1.942, 0.66, 0.42, 0.60, 0.73, 0.50, 0.40),   # tail
+    ( 2.079, 0.58, 0.06, 0.33, 0.30, 0.30, 0.26),   # prow
+    ( 1.900, 0.74, 0.45, 0.83, 0.83, 0.78, 0.62),
+    ( 1.700, 0.82, 0.50, 0.85, 0.86, 0.88, 0.70),
+    ( 1.500, 0.96, 0.52, 0.87, 0.57, 0.57, 0.50),   # tub narrows, flare stays
+    ( 1.351, 0.97, 0.53, 0.88, 0.56, 0.58, 0.50),   # front axle
+    ( 1.150, 0.97, 0.53, 0.89, 0.60, 0.67, 0.56),
+    ( 0.900, 0.97, 0.54, 0.86, 0.88, 0.85, 0.70),
+    ( 0.500, 0.92, 0.55, 0.80, 0.73, 0.79, 0.66),
+    ( 0.150, 1.29, 0.42, 0.80, 0.70, 0.81, 0.68),   # screen
+    (-0.150, 1.30, 0.44, 0.80, 0.70, 0.82, 0.68),   # canopy crown
+    (-0.500, 1.27, 0.46, 0.81, 0.70, 0.83, 0.69),
+    (-0.900, 1.14, 0.47, 0.85, 0.85, 0.85, 0.70),
+    (-1.150, 1.03, 0.50, 0.84, 0.67, 0.69, 0.58),
+    (-1.351, 1.01, 0.52, 0.86, 0.65, 0.66, 0.56),   # rear axle
+    (-1.550, 0.96, 0.51, 0.88, 0.69, 0.69, 0.58),
+    (-1.750, 0.87, 0.50, 0.81, 0.84, 0.81, 0.66),
+    (-1.942, 0.80, 0.42, 0.60, 0.73, 0.50, 0.40),   # tail
 ]
 
+# Heights scaled up by 1.241 above the floor line. Measured off the hero image:
+# wheelbase divided by roof height is 2.07 there, against 2.57 as first built,
+# which put the roof at 1051mm where the reference implies 1304mm. That single
+# ratio is most of the difference in feel — the car was a flat wedge where the
+# reference is tall and muscular. Both wheel centres and the roof are fully in
+# frame so the ratio is trustworthy, unlike overall length: the image is
+# cropped hard at the rear, so anything derived from car length is not.
+#
 # Heights of the lower rings. The flare rides just under the top surface but
 # never above 0.72, so it stays put through the tall cabin instead of being
 # dragged up with the canopy.
-FLARE_Z_MAX, FLARE_GAP = 0.72, 0.06
-WAIST_Z, ROCKER_Z, FLOOR_Z = 0.36, 0.17, 0.10
+FLARE_Z_MAX, FLARE_GAP = 0.869, 0.075
+WAIST_Z, ROCKER_Z, FLOOR_Z = 0.423, 0.187, 0.10
 
 STATIONS = [{"x": x, "top_z": tz, "edge_w": ew, "flare_w": fw,
              "waist_w": ww, "rocker_w": rw, "floor_w": flw}
