@@ -160,6 +160,21 @@ mapping creases by vertex-pair sidesteps the unallocatable layer.
   overhangs and a 1072mm roof — NOT the 4519mm Porsche envelope named earlier.
   Ask which governs when the two conflict.
 
+**A crease on a boundary edge does nothing (2026-11-07).** Subsurf already
+holds every open edge sharp — the sill, every aperture rim, the end-cap
+outlines. Creasing the full rim of every opening moved 0.0mm across 3456
+subdivided verts; so did the floor ring's 1.0. The interior rings (top_edge,
+waist, flare) move the surface 55–84mm each. So the shut lines that are
+actually being tuned are the interior ones only; if a line reads soft at an
+opening, the fix is in the geometry meeting it (the liner), not a crease on
+the rim. check_creases catches a crease that has wandered onto an outline.
+
+**An aperture goes dead when its stations go (2026-11-07).** Resampling the
+profile left the grille and side-scoop x-ranges holding one station each, so
+they cut nothing, and the closed openings went unnoticed for several rounds of
+rendering. Cuts only happen between two stations inside the range.
+check_apertures names them; when you move stations, re-check the apertures.
+
 ## Recurring mistakes to avoid
 
 - Do not build body panels as triangulated n-gons or extruded flat profiles.

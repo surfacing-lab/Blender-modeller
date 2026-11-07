@@ -52,11 +52,10 @@ PROPORTIONS = {
     "subdiv_render":    5,
 }
 
-# Ring order down the side, and how hard each is creased. The outline — the
-# wheel-well lip and the sill — is hard. Design lines are moderate; a fully
-# creased character line reads as damage rather than as a design line. Nothing
-# else is creased, and nothing else exists: between the outlines the surface is
-# a single smooth span.
+# Ring order down the side, and how hard each is creased. The wheel-well lip
+# is hard. Design lines are moderate; a fully creased character line reads as
+# damage rather than as a design line. Nothing else is creased, and nothing
+# else exists: between the outlines the surface is a single smooth span.
 # Rings down the side, outboard from the centreline. ACTIVE_RINGS is what
 # actually gets built — a ring can be dropped from it and the creases still
 # resolve, because they are keyed by name rather than by index.
@@ -78,6 +77,10 @@ ACTIVE_RINGS = list(RING_ORDER)
 # unbuilt, indexed by the ring below them: 0 spans centreline to top edge,
 # 1 top edge to shoulder, 2 shoulder to character, 3 character to sill,
 # 4 sill to the wheel-well lip.
+#
+# An opening's rim needs no crease: Subsurf holds open edges sharp on its
+# own, and creasing them was measured as moving nothing. Only interior edges
+# take a crease, which is why the rings get them and the rims do not.
 #
 # Cutting these REDUCES the cage. Stations and rings that existed only to
 # shape a region which is now a hole stop earning their place, so the count
@@ -113,8 +116,10 @@ def _skip(x0, x1, ring):
     return False
 
 
+# Only interior rings. The floor ring is the shell's open bottom edge and
+# Subsurf holds it sharp regardless; its 1.0 crease was measured as moving
+# nothing and came out. check_creases() catches the next one.
 CREASE_BY_NAME = {
-    "floor":     1.00,   # bottom outline
     "flare":     0.99,   # the fender line — the hard edge the whole car hangs on
     "waist":     0.60,
     "top_edge":  0.33,
@@ -231,6 +236,49 @@ def check_order():
     by value landed on the wrong side and went unnoticed for two rounds."""
     xs = [r["x"] for r in STATIONS]
     return [(xs[i], xs[i + 1]) for i in range(len(xs) - 1) if xs[i] <= xs[i + 1]]
+
+
+def check_apertures():
+    """An aperture can only cut between two stations inside its x-range. One
+    whose range holds fewer than two cuts nothing — the opening silently closes
+    — and nothing else notices: the grille and side scoop both went dead when
+    the profile was resampled, and stayed dead across several rounds."""
+    xs = [r["x"] for r in STATIONS]
+    return [ap["name"] for ap in APERTURES
+            if sum(ap["x"][0] <= x <= ap["x"][1] for x in xs) < 2]
+
+
+def check_creases(body, p=None):
+    """Creased rings with no interior edge. A crease on an open edge does
+    nothing — Subsurf already holds boundaries sharp — so a ring that is the
+    outline everywhere along its length is a value nobody is tuning. A ring
+    that runs open only where it passes an aperture is fine; it still works
+    along the rest of the car."""
+    p = p or PROPORTIONS
+    me = body.data
+    faces_on = {}
+    for poly in me.polygons:
+        for key in poly.edge_keys:
+            faces_on[key] = faces_on.get(key, 0) + 1
+    index_at = {tuple(round(c, 5) for c in v.co): v.index for v in me.vertices}
+
+    def interior(name):
+        ring = ACTIVE_RINGS.index(name)
+        for a, b in zip(STATIONS, STATIONS[1:]):
+            ends = []
+            for row in (a, b):
+                y, z = station_rings(row, p)[ring]
+                ends.append(index_at.get((round(row["x"], 5), round(y, 5), round(z, 5))))
+            if None in ends:
+                continue
+            # The centreline is welded by Mirror before Subsurf sees it.
+            on_seam = all(abs(me.vertices[i].co.y) < 1e-6 for i in ends)
+            if faces_on.get(tuple(sorted(ends)), 0) == 2 or on_seam:
+                return True
+        return False
+
+    return [name for name in CREASE_BY_NAME
+            if name in ACTIVE_RINGS and not interior(name)]
 
 
 def check_folds(p=None):
@@ -439,7 +487,10 @@ def dimensions(body, p=None):
 
 if __name__ == "__main__":
     print("folded stations:", check_folds() or "none")
+    print("stations out of order:", check_order() or "none")
+    print("dead apertures:", check_apertures() or "none")
     b = build(ground=False)
+    print("dead creases:", check_creases(b) or "none")
     print(poly_report(b))
     print(arch_clearance(b))
     print(dimensions(b))

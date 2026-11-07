@@ -38,9 +38,12 @@ def check_folds(stations, rings_fn):
 def build_cage(stations, rings_fn, creases, cap_ends=False, skip=None):
     """Loft the stations into an all-quad cage and crease the named lines.
 
-    `creases` maps ring index to crease value. The outline — the boundary loop
-    and the sill — wants to be hard; interior design lines want less, since a
-    fully creased character line reads as damage rather than as a design line.
+    `creases` maps ring index to crease value. Interior design lines want less
+    than full, since a fully creased character line reads as damage rather than
+    as a design line. Creasing a boundary edge does nothing: Subsurf already
+    holds every open edge — the sill, the aperture rims, the end caps' outline —
+    sharp, so a crease there is dead weight. Measured, not assumed: creasing the
+    full rim of every aperture moved no vertex of the subdivided surface.
     """
     bm = bmesh.new()
     grid = [[bm.verts.new((row["x"], y, z)) for y, z in rings_fn(row)]

@@ -116,6 +116,18 @@ either side of every hard line, and 0.703 without them — for 2.6x the face
 count. Stations get the same treatment: keep only the ones that change the
 form, and check by measuring rather than by eye.
 
+**Creases only act on interior edges.** Subsurf holds every open edge sharp
+on its own — the sill, the rim of each aperture, the outline of the end caps.
+Creasing one of those was measured as moving no vertex of the subdivided
+surface, so the floor crease came out and aperture rims never get one. What
+a crease on `top_edge`, `waist` or `flare` moves, for comparison, is 55–84mm.
+`check_creases(body)` lists any crease sitting on a boundary edge.
+
+**An aperture only cuts between two stations inside its x-range.** Resample
+the profile and an opening whose range now holds a single station silently
+closes. `check_apertures()` names them; the grille and side scoop are both
+dead at the moment and want their ranges moved onto existing stations.
+
 ## The model as it stands
 
 | | |
@@ -152,6 +164,9 @@ current views.
 from models import car_blockout
 body = car_blockout.build()
 car_blockout.check_folds()          # must be empty
+car_blockout.check_order()          # stations front to back — must be empty
+car_blockout.check_apertures()      # openings that cut nothing — must be empty
+car_blockout.check_creases(body)    # creases on boundary edges — must be empty
 car_blockout.poly_report(body)      # cage faces, all-quad check, subdivided total
 car_blockout.arch_clearance(body)   # does the wheel actually fit its opening
 ```
